@@ -8,6 +8,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.SyncAlt
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.attentionguard.ui.theme.*
 
+data class ChartPoint(val label: String, val value: Float)
+
 @Composable
 fun InsightsScreen(
     apiScore: Float,
@@ -30,9 +35,99 @@ fun InsightsScreen(
     switchFreq: Float,
     nightRatio: Float,
     skipFrequency: Float,
+    youtubeDuration: Float,
+    instagramDuration: Float,
+    tiktokDuration: Float,
+    isYoutubeInstalled: Boolean,
+    isInstagramInstalled: Boolean,
+    isTiktokInstalled: Boolean,
+    dbLogs: List<com.attentionguard.data.AttentionLog>,
     onNavigateToMeditate: () -> Unit
 ) {
     val scrollState = rememberScrollState()
+    
+    // Active chart type state
+    var chartType by remember { mutableStateOf("hourly") }
+    
+    // 1. Prepare Hourly Data (Hour of Day)
+    val todayStart = remember {
+        val cal = java.util.Calendar.getInstance()
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        cal.timeInMillis
+    }
+    
+    val todayLogs = remember(dbLogs) {
+        dbLogs.filter { it.timestamp >= todayStart }
+    }
+    
+    val hourlyBaseline = listOf(0.45f, 0.25f, 0.15f, 0.45f, 0.58f, 0.42f, 0.65f, 0.52f, 0.45f)
+    val hoursList = listOf(0, 3, 6, 9, 12, 15, 18, 21, 24)
+    val scaleFactor = if (apiScore > 0f) apiScore / 0.52f else 1f
+    
+    val hourlyPoints = remember(todayLogs, scaleFactor) {
+        hoursList.mapIndexed { index, hour ->
+            val start = todayStart + ((hour - 1.5) * 3600000).toLong()
+            val end = todayStart + ((hour + 1.5) * 3600000).toLong()
+            val logsInInterval = todayLogs.filter { it.timestamp in start..end }
+            
+            if (logsInInterval.isNotEmpty()) {
+                logsInInterval.map { it.apiScore }.average().toFloat()
+            } else {
+                Math.min(1.0f, hourlyBaseline[index] * scaleFactor)
+            }
+        }
+    }
+    
+    val peakIndex = remember(hourlyPoints) {
+        hourlyPoints.take(8).indices.maxByOrNull { hourlyPoints[it] } ?: 6
+    }
+    val peakHoursList = listOf("12:00 AM", "03:00 AM", "06:00 AM", "09:00 AM", "12:00 PM", "03:00 PM", "06:00 PM", "09:00 PM")
+    val peakHourText = peakHoursList[peakIndex]
+
+    // 2. Prepare Weekly Data (Day by Day)
+    val dayNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+    val fullDayNames = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
+    
+    val weeklyBaselines = listOf(2.4f, 3.1f, 1.8f, 2.9f, 4.2f, 3.5f, sessionDuration)
+    
+    val weeklyPoints = remember(dbLogs, sessionDuration) {
+        (0..6).map { i ->
+            val c = java.util.Calendar.getInstance()
+            c.add(java.util.Calendar.DAY_OF_YEAR, -i)
+            c
+        }.reversed().mapIndexed { index, c ->
+            val dayStart = c.apply {
+                set(java.util.Calendar.HOUR_OF_DAY, 0)
+                set(java.util.Calendar.MINUTE, 0)
+                set(java.util.Calendar.SECOND, 0)
+                set(java.util.Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            val dayEnd = dayStart + 86400000L - 1000L
+            
+            val logsForDay = dbLogs.filter { it.timestamp in dayStart..dayEnd }
+            val value = if (logsForDay.isNotEmpty()) {
+                logsForDay.maxOf { it.sessionDuration }
+            } else {
+                weeklyBaselines[index]
+            }
+            ChartPoint(
+                label = dayNames[c.get(java.util.Calendar.DAY_OF_WEEK) - 1],
+                value = value
+            )
+        }
+    }
+    
+    val maxDayIndex = remember(weeklyPoints) {
+        weeklyPoints.indices.maxByOrNull { weeklyPoints[it].value } ?: 4
+    }
+    val peakDayText = remember(maxDayIndex) {
+        val c = java.util.Calendar.getInstance()
+        c.add(java.util.Calendar.DAY_OF_YEAR, -(6 - maxDayIndex))
+        fullDayNames[c.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+    }
 
     Box(
         modifier = Modifier
@@ -44,17 +139,16 @@ fun InsightsScreen(
                 .fillMaxSize()
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp, vertical = 16.dp)
-                .padding(bottom = 100.dp), // offset for sticky bottom button
+                .padding(bottom = 100.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "24-Hour Behavioral Pattern",
+                text = "Behavioral Patterns Insights",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = OnSurfaceDark
             )
 
-            // Chart Bento Card (32.dp rounding)
             Card(
                 shape = RoundedCornerShape(32.dp),
                 border = BorderStroke(1.dp, HairlineSoft),
@@ -69,43 +163,57 @@ fun InsightsScreen(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
                             Text(
-                                text = "PEAK ACTIVITY",
+                                text = if (chartType == "hourly") "PEAK ACTIVITY" else "MOST ACTIVE DAY",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = SecondaryGray,
                                 letterSpacing = 1.sp
                             )
                             Text(
-                                text = "01:42 AM",
+                                text = if (chartType == "hourly") peakHourText else peakDayText,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = OnSurfaceDark,
                                 modifier = Modifier.padding(top = 4.dp)
                             )
                         }
-                        Surface(
-                            shape = RoundedCornerShape(100.dp),
-                            color = SurfaceSoft,
-                            modifier = Modifier.padding(vertical = 4.dp)
+                        
+                        Row(
+                            modifier = Modifier
+                                .background(SurfaceSoft, RoundedCornerShape(100.dp))
+                                .padding(2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
-                            Text(
-                                text = "+18% vs yesterday",
-                                color = CommerceCobalt,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold
-                            )
+                            val activeTabColor = CommerceCobalt
+                            val inactiveTabColor = Color.Transparent
+                            
+                            val tabs = listOf("hourly" to "Hourly", "weekly" to "Weekly")
+                            tabs.forEach { (type, label) ->
+                                val selected = chartType == type
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(100.dp))
+                                        .background(if (selected) activeTabColor else inactiveTabColor)
+                                        .clickable { chartType = type }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (selected) Color.White else SecondaryGray
+                                    )
+                                }
+                            }
                         }
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // SVG-style line chart drawing inside Compose Canvas
-                    val graphScale = apiScore / 0.52f
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -115,7 +223,6 @@ fun InsightsScreen(
                             val w = size.width
                             val h = size.height
 
-                            // Draw baseline grid lines
                             drawLine(
                                 color = HairlineSoft,
                                 start = Offset(0f, h),
@@ -130,81 +237,107 @@ fun InsightsScreen(
                                 pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
                             )
 
-                            // Define bezier control points scaled dynamically
-                            val p1 = Offset(0f, h)
-                            val p2 = Offset(w * 0.15f, h * 0.85f * graphScale)
-                            val p3 = Offset(w * 0.30f, h * 0.40f * graphScale)
-                            val p4 = Offset(w * 0.45f, h * 0.15f * graphScale)
-                            val p5 = Offset(w * 0.60f, h * 0.70f * graphScale)
-                            val p6 = Offset(w * 0.75f, h * 0.80f * graphScale)
-                            val p7 = Offset(w * 0.90f, h * 0.35f * graphScale)
-                            val p8 = Offset(w, h * 0.40f * graphScale)
-
-                            val path = Path().apply {
-                                moveTo(p1.x, p1.y)
-                                cubicTo(p2.x, p2.y, p3.x, p3.y, p4.x, p4.y)
-                                cubicTo(p5.x, p5.y, p6.x, p6.y, p7.x, p7.y)
-                                lineTo(p8.x, p8.y)
-                            }
-
-                            // Draw Area Gradient Fill
-                            val areaPath = Path().apply {
-                                addPath(path)
-                                lineTo(w, h)
-                                lineTo(0f, h)
-                                close()
-                            }
-
                             val themeColor = when (riskTier) {
                                 "low" -> RiskLow
                                 "moderate" -> RiskModerate
                                 else -> RiskHigh
                             }
 
-                            drawPath(
-                                path = areaPath,
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(themeColor.copy(alpha = 0.25f), Color.Transparent)
+                            if (chartType == "hourly") {
+                                val points = hourlyPoints.mapIndexed { index, valRaw ->
+                                    Offset(index * w / 8f, h - (valRaw * h))
+                                }
+                                
+                                val path = Path().apply {
+                                    moveTo(points[0].x, points[0].y)
+                                    for (i in 0 until points.size - 1) {
+                                        val pStart = points[i]
+                                        val pEnd = points[i + 1]
+                                        val controlX = (pStart.x + pEnd.x) / 2f
+                                        cubicTo(controlX, pStart.y, controlX, pEnd.y, pEnd.x, pEnd.y)
+                                    }
+                                }
+
+                                drawPath(
+                                    path = path,
+                                    color = themeColor,
+                                    style = Stroke(width = 8f, cap = StrokeCap.Round)
                                 )
-                            )
 
-                            // Draw Smooth Path Line
-                            drawPath(
-                                path = path,
-                                color = themeColor,
-                                style = Stroke(width = 8f, cap = StrokeCap.Round)
-                            )
+                                val areaPath = Path().apply {
+                                    addPath(path)
+                                    lineTo(w, h)
+                                    lineTo(0f, h)
+                                    close()
+                                }
 
-                            // Draw Anomaly Highlight circle (Peak point around 45%)
-                            val highlightX = w * 0.45f
-                            val highlightY = h * 0.15f * graphScale
-                            drawCircle(
-                                color = themeColor,
-                                radius = 15f,
-                                center = Offset(highlightX, highlightY),
-                                style = Stroke(width = 4f)
-                            )
-                            drawCircle(
-                                color = themeColor,
-                                radius = 6f,
-                                center = Offset(highlightX, highlightY)
-                            )
+                                drawPath(
+                                    path = areaPath,
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(themeColor.copy(alpha = 0.25f), Color.Transparent)
+                                    )
+                                )
+
+                                val highlightX = peakIndex * w / 8f
+                                val highlightY = h - (hourlyPoints[peakIndex] * h)
+                                drawCircle(
+                                    color = themeColor,
+                                    radius = 15f,
+                                    center = Offset(highlightX, highlightY),
+                                    style = Stroke(width = 4f)
+                                )
+                                drawCircle(
+                                    color = themeColor,
+                                    radius = 6f,
+                                    center = Offset(highlightX, highlightY)
+                                )
+                            } else {
+                                val numBars = weeklyPoints.size
+                                val barWidth = w / (numBars * 1.8f - 0.8f)
+                                val spacing = barWidth * 0.8f
+                                val maxVal = 8.0f 
+
+                                for (i in 0 until numBars) {
+                                    val x = i * (barWidth + spacing)
+                                    val barVal = weeklyPoints[i].value
+                                    val barH = Math.max(12f, (barVal / maxVal) * h)
+                                    val y = h - barH
+                                    
+                                    val barColor = if (barVal >= 5.0f) RiskHigh else if (barVal >= 2.8f) RiskModerate else CommerceCobalt
+                                    
+                                    drawRoundRect(
+                                        color = barColor,
+                                        topLeft = Offset(x, y),
+                                        size = androidx.compose.ui.geometry.Size(barWidth, barH),
+                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
+                                    )
+                                }
+                            }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        horizontalArrangement = if (chartType == "hourly") Arrangement.SpaceBetween else Arrangement.SpaceAround
                     ) {
-                        listOf("12 PM", "6 PM", "12 AM", "6 AM").forEach { time ->
-                            Text(
-                                text = time,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = SecondaryGray
-                            )
+                        if (chartType == "hourly") {
+                            listOf("12 AM", "6 AM", "12 PM", "6 PM", "12 AM").forEach { time ->
+                                Text(
+                                    text = time,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SecondaryGray
+                                )
+                            }
+                        } else {
+                            weeklyPoints.forEach { point ->
+                                Text(
+                                    text = point.label,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SecondaryGray
+                                )
+                            }
                         }
                     }
                 }
@@ -304,6 +437,77 @@ fun InsightsScreen(
                                 color = OnSurfaceDark,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                // 1b. Target App Exposure Details
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, HairlineSoft),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Target App Exposure Details",
+                            fontWeight = FontWeight.Bold,
+                            color = OnSurfaceDark,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            text = "Exposure time breakdown for targeted short-form content apps",
+                            color = SecondaryGray,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+
+                        val showYoutube = isYoutubeInstalled && youtubeDuration > 0.01f
+                        val showInstagram = isInstagramInstalled && instagramDuration > 0.01f
+                        val showTiktok = isTiktokInstalled && tiktokDuration > 0.01f
+
+                        if (showYoutube) {
+                            AppUsageBar(
+                                appName = "YouTube (incl. Shorts)",
+                                duration = youtubeDuration,
+                                maxDuration = 4.0f,
+                                color = Color(0xFFE41E3F),
+                                icon = { YouTubeIcon() }
+                            )
+                        }
+
+                        if (showInstagram) {
+                            AppUsageBar(
+                                appName = "Instagram (incl. Reels)",
+                                duration = instagramDuration,
+                                maxDuration = 4.0f,
+                                color = Color(0xFFA121CE),
+                                icon = { InstagramIcon() }
+                            )
+                        }
+
+                        if (showTiktok) {
+                            AppUsageBar(
+                                appName = "TikTok",
+                                duration = tiktokDuration,
+                                maxDuration = 4.0f,
+                                color = Color(0xFF000000),
+                                icon = { TikTokIcon() }
+                            )
+                        }
+
+                        if (!showYoutube && !showInstagram && !showTiktok) {
+                            Text(
+                                text = "No active screen time recorded today for monitored apps.",
+                                color = SecondaryGray,
+                                fontSize = 13.sp,
+                                modifier = Modifier.padding(vertical = 8.dp)
                             )
                         }
                     }
@@ -556,4 +760,119 @@ private fun textLabel(text: String) {
         color = OnSurfaceDark,
         fontSize = 15.sp
     )
+}
+
+@Composable
+private fun YouTubeIcon() {
+    Surface(
+        modifier = Modifier.size(28.dp),
+        shape = RoundedCornerShape(6.dp),
+        color = Color(0xFFE41E3F)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Default.PlayArrow,
+                contentDescription = "YouTube",
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun InstagramIcon() {
+    Surface(
+        modifier = Modifier.size(28.dp),
+        shape = RoundedCornerShape(8.dp),
+        color = Color(0xFFA121CE)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Default.VideoLibrary,
+                contentDescription = "Instagram",
+                tint = Color.White,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun TikTokIcon() {
+    Surface(
+        modifier = Modifier.size(28.dp),
+        shape = RoundedCornerShape(100.dp),
+        color = Color.Black
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Default.MusicNote,
+                contentDescription = "TikTok",
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AppUsageBar(
+    appName: String,
+    duration: Float,
+    maxDuration: Float,
+    color: Color,
+    icon: @Composable () -> Unit
+) {
+    val ratio = if (maxDuration > 0f) Math.min(1.0f, Math.max(0.0f, duration / maxDuration)) else 0f
+    val animWidth by animateFloatAsState(
+        targetValue = ratio,
+        animationSpec = tween(1200)
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        icon()
+
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = appName,
+                    fontWeight = FontWeight.Bold,
+                    color = OnSurfaceDark,
+                    fontSize = 13.sp
+                )
+                Text(
+                    text = String.format("%.1f hrs", duration),
+                    color = SecondaryGray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(100.dp))
+                    .background(SurfaceSoft)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(animWidth)
+                        .background(color)
+                )
+            }
+        }
+    }
 }

@@ -13,14 +13,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.work.*
 import com.attentionguard.service.AttentionMonitoringService
+import com.attentionguard.service.AttentionAccessibilityService
+import com.attentionguard.service.AttentionCalculationWorker
 import com.attentionguard.ui.screens.*
 import com.attentionguard.ui.theme.AttentionGuardTheme
 import com.attentionguard.ui.components.NudgeModal
 import com.attentionguard.ui.components.PreventionPlanOverlayModal
+import com.attentionguard.data.AppDatabase
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
 
@@ -30,12 +36,27 @@ class MainActivity : ComponentActivity() {
         // Start passive monitoring service
         val serviceIntent = Intent(this, AttentionMonitoringService::class.java)
         startService(serviceIntent)
+
+        // Schedule hourly AttentionCalculationWorker
+        scheduleHourlyCalculation()
         
         setContent {
             AttentionGuardTheme {
                 MainAppScaffold()
             }
         }
+    }
+
+    private fun scheduleHourlyCalculation() {
+        val workRequest = PeriodicWorkRequestBuilder<AttentionCalculationWorker>(
+            1, TimeUnit.HOURS
+        ).build()
+        
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "AttentionCalculation",
+            ExistingPeriodicWorkPolicy.KEEP,
+            workRequest
+        )
     }
 }
 
@@ -53,6 +74,11 @@ data class AlertLog(
 @Composable
 fun MainAppScaffold() {
     var activeTab by remember { mutableStateOf("today") }
+    val context = LocalContext.current
+    val database = remember { AppDatabase.getDatabase(context) }
+    val dbLogs by database.attentionLogDao().getAllLogsFlow().collectAsState(initial = emptyList())
+    
+    var useSimulatedData by remember { mutableStateOf(AttentionMonitoringService.useSimulatedData) }
     
     // Behaviors State
     var sessionDuration by remember { mutableStateOf(2.5f) }
@@ -63,6 +89,15 @@ fun MainAppScaffold() {
     var foregroundLatency by remember { mutableStateOf(1.5f) }
     var nightRatio by remember { mutableStateOf(0.75f) }
 
+    // App specific exposure states
+    var youtubeDuration by remember { mutableStateOf(1.0f) }
+    var instagramDuration by remember { mutableStateOf(0.8f) }
+    var tiktokDuration by remember { mutableStateOf(0.7f) }
+
+    var isYoutubeInstalled by remember { mutableStateOf(AttentionMonitoringService.isYoutubeInstalled) }
+    var isInstagramInstalled by remember { mutableStateOf(AttentionMonitoringService.isInstagramInstalled) }
+    var isTiktokInstalled by remember { mutableStateOf(AttentionMonitoringService.isTiktokInstalled) }
+
     // Calculated state
     var apiScore by remember { mutableStateOf(0.52f) }
     var riskTier by remember { mutableStateOf("moderate") }
@@ -71,49 +106,102 @@ fun MainAppScaffold() {
     var showNudgeModal by remember { mutableStateOf(false) }
     var showOverlayModal by remember { mutableStateOf(false) }
 
-    // Alerts collection
-    val alertsList = remember {
-        mutableStateListOf(
-            AlertLog(1, "06:12 PM Today", "Late-Night Scrolling Detected", "You've spent 40% more time on short-form videos after midnight this week.", 0.52f, "moderate"),
-            AlertLog(2, "10:15 AM Yesterday", "High Task-Switching", "Task switching frequency exceeded normal baseline by 35% during work hours.", 0.58f, "moderate"),
-            AlertLog(3, "08:30 PM 2 Days Ago", "Sustained Low-Risk State", "Attention Performance Indicator maintained stable cognitive load.", 0.24f, "low")
-        )
+    // Alerts collection mapped dynamically from Database
+    val sdfTime = remember { SimpleDateFormat("hh:mm a dd/MM", Locale.getDefault()) }
+    val alertsList = remember(dbLogs) {
+        if (dbLogs.isEmpty()) {
+            listOf(
+                AlertLog(1, "06:12 PM Today", "Late-Night Scrolling Detected", "You've spent 40% more time on short-form videos after midnight this week.", 0.52f, "moderate"),
+                AlertLog(2, "10:15 AM Yesterday", "High Task-Switching", "Task switching frequency exceeded normal baseline by 35% during work hours.", 0.58f, "moderate"),
+                AlertLog(3, "08:30 PM 2 Days Ago", "Sustained Low-Risk State", "Attention Performance Indicator maintained stable cognitive load.", 0.24f, "low")
+            )
+        } else {
+            dbLogs.map { log ->
+                val date = Date(log.timestamp)
+                val formattedDate = sdfTime.format(date)
+                
+                val title = when (log.riskTier) {
+                    "high" -> "High Attention Risk Detected"
+                    "moderate" -> "Late-Night Scroll Alert"
+                    else -> "Sustained Low-Risk State"
+                }
+                val desc = when (log.riskTier) {
+                    "high" -> "Severe pattern fragmentation detected across all passive behavior sensors."
+                    "moderate" -> "Interaction micro-behaviors indicate fast skipping under moderate cognitive load."
+                    else -> "Attention Performance Indicator maintained stable cognitive load."
+                }
+                
+                AlertLog(
+                    id = log.id,
+                    timestamp = formattedDate,
+                    title = title,
+                    description = desc,
+                    apiScore = log.apiScore,
+                    riskTier = log.riskTier
+                )
+            }
+        }
     }
 
     // Connect trigger updates from service callback
     LaunchedEffect(Unit) {
+        AttentionMonitoringService.onMetricsUpdated = { session, scroll, switches, night, score, risk ->
+            if (!AttentionMonitoringService.useSimulatedData) {
+                sessionDuration = session
+                scrollVelocity = scroll
+                switchFreq = switches
+                nightRatio = night
+                apiScore = score
+                riskTier = risk
+                
+                youtubeDuration = AttentionMonitoringService.youtubeDuration
+                instagramDuration = AttentionMonitoringService.instagramDuration
+                tiktokDuration = AttentionMonitoringService.tiktokDuration
+                
+                isYoutubeInstalled = AttentionMonitoringService.isYoutubeInstalled
+                isInstagramInstalled = AttentionMonitoringService.isInstagramInstalled
+                isTiktokInstalled = AttentionMonitoringService.isTiktokInstalled
+            }
+        }
+
         AttentionMonitoringService.onTriggerAlert = { newRisk, newScore ->
-            riskTier = newRisk
-            apiScore = newScore
-
-            val sdf = SimpleDateFormat("hh:mm a 'Today'", Locale.getDefault())
-            val dateStr = sdf.format(Date())
-
             if (newRisk == "high") {
-                alertsList.add(0, AlertLog(
-                    id = System.currentTimeMillis(),
-                    timestamp = dateStr,
-                    title = "High Attention Risk Detected",
-                    description = "Severe pattern fragmentation detected across all passive behavior sensors.",
-                    apiScore = newScore,
-                    riskTier = newRisk
-                ))
                 showOverlayModal = true
             } else if (newRisk == "moderate") {
-                alertsList.add(0, AlertLog(
-                    id = System.currentTimeMillis(),
-                    timestamp = dateStr,
-                    title = "Late-Night Scroll Alert",
-                    description = "Interaction micro-behaviors indicate fast skipping under moderate cognitive load.",
-                    apiScore = newScore,
-                    riskTier = newRisk
-                ))
                 showNudgeModal = true
             }
         }
     }
 
-    // Function to handle signal changes and update calculations
+    // Sync initial service states when mode changes
+    LaunchedEffect(useSimulatedData) {
+        if (!useSimulatedData) {
+            sessionDuration = AttentionMonitoringService.currentSession
+            scrollVelocity = AttentionMonitoringService.currentScroll
+            switchFreq = AttentionMonitoringService.currentSwitches
+            nightRatio = AttentionMonitoringService.currentNight
+            apiScore = AttentionMonitoringService.apiScore
+            riskTier = AttentionMonitoringService.riskTier
+            
+            youtubeDuration = AttentionMonitoringService.youtubeDuration
+            instagramDuration = AttentionMonitoringService.instagramDuration
+            tiktokDuration = AttentionMonitoringService.tiktokDuration
+            
+            isYoutubeInstalled = AttentionMonitoringService.isYoutubeInstalled
+            isInstagramInstalled = AttentionMonitoringService.isInstagramInstalled
+            isTiktokInstalled = AttentionMonitoringService.isTiktokInstalled
+        } else {
+            youtubeDuration = sessionDuration * 0.40f
+            instagramDuration = sessionDuration * 0.30f
+            tiktokDuration = sessionDuration * 0.30f
+            
+            isYoutubeInstalled = true
+            isInstagramInstalled = true
+            isTiktokInstalled = true
+        }
+    }
+
+    // Function to handle signal changes and update calculations in simulated mode
     val onSignalChanged: () -> Unit = {
         AttentionMonitoringService.updateCalculations(
             session = sessionDuration,
@@ -123,6 +211,14 @@ fun MainAppScaffold() {
         )
         apiScore = AttentionMonitoringService.apiScore
         riskTier = AttentionMonitoringService.riskTier
+        
+        youtubeDuration = AttentionMonitoringService.youtubeDuration
+        instagramDuration = AttentionMonitoringService.instagramDuration
+        tiktokDuration = AttentionMonitoringService.tiktokDuration
+        
+        isYoutubeInstalled = true
+        isInstagramInstalled = true
+        isTiktokInstalled = true
     }
 
     Scaffold(
@@ -178,6 +274,13 @@ fun MainAppScaffold() {
                     switchFreq = switchFreq,
                     nightRatio = nightRatio,
                     skipFrequency = skipFrequency,
+                    youtubeDuration = youtubeDuration,
+                    instagramDuration = instagramDuration,
+                    tiktokDuration = tiktokDuration,
+                    isYoutubeInstalled = isYoutubeInstalled,
+                    isInstagramInstalled = isInstagramInstalled,
+                    isTiktokInstalled = isTiktokInstalled,
+                    dbLogs = dbLogs,
                     onNavigateToMeditate = { activeTab = "meditate" }
                 )
                 "alerts" -> AlertsScreen(alerts = alertsList)
@@ -187,6 +290,29 @@ fun MainAppScaffold() {
                     onActivatePlan = { /* Action callback */ }
                 )
                 "settings" -> SettingsScreen(
+                    useSimulatedData = useSimulatedData,
+                    onSimulatedDataToggled = {
+                        AttentionMonitoringService.useSimulatedData = it
+                        useSimulatedData = it
+                        if (!it) {
+                            val results = AttentionMonitoringService.queryMetricsDirectly(context)
+                            
+                            AttentionMonitoringService.youtubeDuration = results.youtube
+                            AttentionMonitoringService.instagramDuration = results.instagram
+                            AttentionMonitoringService.tiktokDuration = results.tiktok
+                            
+                            isYoutubeInstalled = AttentionMonitoringService.isYoutubeInstalled
+                            isInstagramInstalled = AttentionMonitoringService.isInstagramInstalled
+                            isTiktokInstalled = AttentionMonitoringService.isTiktokInstalled
+
+                            AttentionMonitoringService.updateCalculations(
+                                results.session,
+                                results.scroll,
+                                results.switches,
+                                results.night
+                            )
+                        }
+                    },
                     sessionDuration = sessionDuration,
                     onSessionChanged = { sessionDuration = it; onSignalChanged() },
                     launchFrequency = launchFrequency,
@@ -228,3 +354,4 @@ fun MainAppScaffold() {
 }
 
 data class TabItem(val id: String, val label: String, val icon: ImageVector)
+

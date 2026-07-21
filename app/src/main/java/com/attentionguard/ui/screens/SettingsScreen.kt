@@ -24,6 +24,8 @@ import com.attentionguard.ui.theme.*
 
 @Composable
 fun SettingsScreen(
+    useSimulatedData: Boolean,
+    onSimulatedDataToggled: (Boolean) -> Unit,
     sessionDuration: Float,
     onSessionChanged: (Float) -> Unit,
     launchFrequency: Int,
@@ -55,7 +57,26 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Section A: Signal Simulator
+        // Section A: Measurement Mode Toggle
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            HeaderSection(title = "Measurement Mode", icon = Icons.Default.Science)
+            
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, HairlineSoft),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                ToggleRow(
+                    title = "Real-world Sensor Mode",
+                    subtitle = "Gunakan sensor nyata Android OS (UsageStats & Accessibility) untuk mengkalkulasi API Score secara otomatis.",
+                    checked = !useSimulatedData,
+                    onCheckedChange = { onSimulatedDataToggled(!it) }
+                )
+            }
+        }
+
+        // Section B: Signal Simulator
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             HeaderSection(title = "Signal Simulator", icon = Icons.Default.Science)
             
@@ -75,6 +96,7 @@ fun SettingsScreen(
                         value = sessionDuration,
                         range = 0f..8.0f,
                         valueLabel = String.format("%.1f hrs", sessionDuration),
+                        enabled = useSimulatedData,
                         onValueChange = onSessionChanged
                     )
 
@@ -84,6 +106,7 @@ fun SettingsScreen(
                         value = launchFrequency.toFloat(),
                         range = 0f..30f,
                         valueLabel = "$launchFrequency launches",
+                        enabled = useSimulatedData,
                         onValueChange = { onLaunchesChanged(it.toInt()) }
                     )
 
@@ -93,6 +116,7 @@ fun SettingsScreen(
                         value = scrollVelocity,
                         range = 0f..250f,
                         valueLabel = String.format("%.0f px/s", scrollVelocity),
+                        enabled = useSimulatedData,
                         onValueChange = onScrollChanged
                     )
 
@@ -102,6 +126,7 @@ fun SettingsScreen(
                         value = skipFrequency,
                         range = 0f..100f,
                         valueLabel = String.format("%.0f%%", skipFrequency),
+                        enabled = useSimulatedData,
                         onValueChange = onSkipsChanged
                     )
 
@@ -111,15 +136,17 @@ fun SettingsScreen(
                         value = switchFreq,
                         range = 0f..20f,
                         valueLabel = String.format("%.1f/hr", switchFreq),
+                        enabled = useSimulatedData,
                         onValueChange = onSwitchesChanged
                     )
 
-                    // Slider 6: Latency
+                    // Slider 6: Foreground Latency
                     SliderItem(
                         label = "Foreground Latency",
                         value = foregroundLatency,
                         range = 0f..5.0f,
                         valueLabel = String.format("%.1fs", foregroundLatency),
+                        enabled = useSimulatedData,
                         onValueChange = onLatencyChanged
                     )
 
@@ -129,6 +156,7 @@ fun SettingsScreen(
                         value = nightRatio * 100f,
                         range = 0f..100f,
                         valueLabel = String.format("%.0f%%", nightRatio * 100f),
+                        enabled = useSimulatedData,
                         onValueChange = { onNightChanged(it / 100f) }
                     )
                 }
@@ -251,6 +279,7 @@ fun SliderItem(
     value: Float,
     range: ClosedFloatingPointRange<Float>,
     valueLabel: String,
+    enabled: Boolean = true,
     onValueChange: (Float) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -259,16 +288,17 @@ fun SliderItem(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = label, fontSize = 14.sp, color = OnSurfaceDark, fontWeight = FontWeight.Medium)
-            Text(text = valueLabel, fontSize = 12.sp, color = CommerceCobalt, fontWeight = FontWeight.Bold)
+            Text(text = label, fontSize = 14.sp, color = if (enabled) OnSurfaceDark else SecondaryGray, fontWeight = FontWeight.Medium)
+            Text(text = valueLabel, fontSize = 12.sp, color = if (enabled) CommerceCobalt else SecondaryGray, fontWeight = FontWeight.Bold)
         }
         Slider(
             value = value,
             valueRange = range,
+            enabled = enabled,
             onValueChange = onValueChange,
             colors = SliderDefaults.colors(
-                thumbColor = InkButton,
-                activeTrackColor = InkButton,
+                thumbColor = if (enabled) InkButton else SecondaryGray.copy(alpha = 0.5f),
+                activeTrackColor = if (enabled) InkButton else SecondaryGray.copy(alpha = 0.3f),
                 inactiveTrackColor = SurfaceSoft
             )
         )
