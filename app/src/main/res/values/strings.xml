@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Attention Guard</string>
+    <string name="accessibility_label">Attention Guard sensor service</string>
+    <string name="accessibility_description">This accessibility service measures scroll velocity and skipped contents to assess cognitive load.</string>
+</resources>

@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>Attention Guard | Meta Design System</title>
+    
+    <!-- Tailwind CSS with CDN -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    
+    <!-- Material Symbols and Be Vietnam Pro Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+    
+    <!-- Custom Style Sheet -->
+    <link href="style.css" rel="stylesheet">
+
+    <!-- Tailwind Configuration matching Stitch tokens -->
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "commerce-cobalt": "#0064E0",
+                        "commerce-cobalt-deep": "#0457CB",
+                        "fb-blue": "#1876F2",
+                        "ink-button": "#000000",
+                        "surface-soft": "#F1F4F7",
+                        "hairline-soft": "#DEE3E9",
+                        "hairline": "#CED0D4",
+                        "secondary": "#5e5e5e",
+                        "critical-red": "#E41E3F",
+                        "warning-yellow": "#F2A918",
+                        "on-surface": "#1a1c1f",
+                        "on-surface-variant": "#424754",
+                        "background": "#ffffff",
+                        "surface-container": "#ededf1",
+                        "surface-container-low": "#f3f3f7",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e8e8ec"
+                    },
+                    borderRadius: {
+                        "lg": "8px",
+                        "xl": "16px",
+                        "xxxl": "32px",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "xxs": "4px",
+                        "xs": "8px",
+                        "sm": "10px",
+                        "md": "12px",
+                        "base": "16px",
+                        "lg": "20px",
+                        "xl": "24px",
+                        "xxl": "32px",
+                        "xxxl": "40px"
+                    }
+                }
+            }
+        };
+    </script>
+</head>
+<body class="bg-slate-100 flex items-center justify-center min-h-screen">
+
+    <!-- Phone Frame Mockup -->
+    <div class="phone-frame">
+        
+        <!-- Dynamic Island Notch -->
+        <div class="phone-notch"></div>
+        
+        <!-- Phone Status Bar -->
+        <div class="status-bar">
+            <span id="phone-clock">20:34</span>
+            <div class="status-bar-icons">
+                <span class="material-symbols-outlined !text-[14px]">signal_cellular_4_bar</span>
+                <span class="material-symbols-outlined !text-[14px]">wifi</span>
+                <span class="material-symbols-outlined !text-[16px]">battery_full</span>
+            </div>
+        </div>
+
+        <!-- Phone App Viewport -->
+        <div class="app-viewport" id="app-viewport-container">
+
+            <!-- ================= SCREEN 1: TODAY (DASHBOARD) ================= -->
+            <div class="app-screen active" id="screen-today">
+                <!-- Top Header Bar -->
+                <header class="sticky top-0 w-full bg-white/90 backdrop-blur-md z-40 flex justify-between items-center px-base py-sm border-b border-hairline-soft">
+                    <div class="flex items-center gap-xs">
+                        <span class="material-symbols-outlined text-commerce-cobalt text-[24px]">verified_user</span>
+                        <h1 class="font-bold text-[20px] text-on-surface tracking-tight">Attention Guard</h1>
+                    </div>
+                    <div class="w-9 h-9 rounded-full bg-surface-container overflow-hidden border border-hairline-soft">
+                        <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuACa5o2SASPk8kfO-FS6NrhGLfnUjEsq39K88bV9c551uMdF_j1qhsK4e7nCOhyqqYE_U8BDKNmVBLoQgXPJAQ0I8xrludpaN51Sw-a7UZ1LURZw68M8e2eBXmCYm_fXG1VqDsrUBNTx0P40B8E2R1veEm2oI6EA_wkFtvyL2TEIOTUmZZUJtXSHCFv8KfDVc0hCpqbXyxDESnS3jsv0_4lvsFltb_FqZc61QEQIRXhCoEid_oDRIvwFw" alt="User Profile">
+                    </div>
+                </header>
+
+                <main class="px-base py-md space-y-base flex-1">
+                    <!-- Today Focus Level Pill Badge -->
+                    <div class="flex justify-center mt-xxs">
+                        <div class="inline-flex items-center bg-surface-container rounded-full px-lg py-xs border border-hairline-soft">
+                            <span class="font-bold text-caption text-commerce-cobalt tracking-wide uppercase">Today's Attention Index</span>
+                        </div>
+                    </div>
+
+                    <!-- Hero Circular Gauge -->
+                    <section class="bg-white rounded-xxxl border border-hairline-soft p-xxl flex flex-col items-center">
+                        <div class="relative w-48 h-48 flex items-center justify-center">
+                            <!-- Circular SVG Gauge -->
+                            <svg class="absolute inset-0 w-full h-full -rotate-90">
+                                <circle class="text-surface-soft" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-width="10"></circle>
+                                <circle class="gauge-ring" id="gauge-circle" cx="96" cy="96" fill="transparent" r="88" stroke="currentColor" stroke-dasharray="552.92" stroke-dashoffset="265.4" stroke-linecap="round" stroke-width="10"></circle>
+                            </svg>
+                            <div class="flex flex-col items-center z-10">
+                                <span class="text-display-lg font-bold text-on-surface" id="dash-api-score">0.52</span>
+                                <span class="text-caption text-secondary uppercase tracking-widest font-bold">API Score</span>
+                            </div>
+                        </div>
+                        <div class="mt-lg">
+                            <span class="text-button-md px-lg py-[2px] rounded-full inline-block font-bold text-white shadow-sm transition-all duration-300" id="dash-risk-badge">
+                                Moderate Risk
+                            </span>
+                        </div>
+                        <p class="mt-base text-center text-body-sm text-on-surface-variant max-w-[250px]" id="dash-risk-desc">
+                            Attention Performance Indicator reflects your digital cognitive load today.
+                        </p>
+                    </section>
+
+                    <!-- Metrics Grid (Stat Cards) -->
+                    <section class="grid grid-cols-2 gap-base">
+                        <!-- Card 1: Session Duration -->
+                        <div class="bg-white border border-hairline-soft rounded-xl p-base flex flex-col justify-between h-[120px] transition-colors hover:bg-surface-soft/30">
+                            <div class="flex flex-col gap-xxs">
+                                <span class="material-symbols-outlined text-commerce-cobalt text-[20px]">timer</span>
+                                <span class="text-body-sm text-secondary font-medium">Session Duration</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-subtitle-lg font-bold text-on-surface" id="dash-session-val">2.5 hrs</span>
+                                <span class="text-caption text-secondary">UsageStats API</span>
+                            </div>
+                        </div>
+                        <!-- Card 2: Scroll Speed -->
+                        <div class="bg-white border border-hairline-soft rounded-xl p-base flex flex-col justify-between h-[120px] transition-colors hover:bg-surface-soft/30">
+                            <div class="flex flex-col gap-xxs">
+                                <span class="material-symbols-outlined text-commerce-cobalt text-[20px]">speed</span>
+                                <span class="text-body-sm text-secondary font-medium">Scroll Speed</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-subtitle-lg font-bold text-on-surface" id="dash-scroll-val">Normal</span>
+                                <span class="text-caption text-secondary">Accessibility API</span>
+                            </div>
+                        </div>
+                        <!-- Card 3: Task Switches -->
+                        <div class="bg-white border border-hairline-soft rounded-xl p-base flex flex-col justify-between h-[120px] transition-colors hover:bg-surface-soft/30">
+                            <div class="flex flex-col gap-xxs">
+                                <span class="material-symbols-outlined text-commerce-cobalt text-[20px]">alt_route</span>
+                                <span class="text-body-sm text-secondary font-medium">Task Switches</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-subtitle-lg font-bold text-on-surface" id="dash-switches-val">8/hr</span>
+                                <span class="text-caption text-secondary">ActivityManager API</span>
+                            </div>
+                        </div>
+                        <!-- Card 4: Night-time Use -->
+                        <div class="bg-white border border-hairline-soft rounded-xl p-base flex flex-col justify-between h-[120px] transition-colors hover:bg-surface-soft/30">
+                            <div class="flex flex-col gap-xxs">
+                                <span class="material-symbols-outlined text-commerce-cobalt text-[20px]">dark_mode</span>
+                                <span class="text-body-sm text-secondary font-medium">Night-time Use</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-subtitle-lg font-bold text-on-surface" id="dash-night-val">75%</span>
+                                <span class="text-caption text-secondary">Midnight Sessions</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Focus Recommendation Bento Box -->
+                    <section class="bg-surface-container-low rounded-xxxl border border-hairline-soft p-base flex gap-base items-center">
+                        <div class="w-14 h-14 bg-white rounded-xl border border-hairline-soft flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-commerce-cobalt text-[32px]">self_improvement</span>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-body-md text-on-surface">Focus Recommendation</h3>
+                            <p class="text-body-sm text-on-surface-variant leading-tight mt-xxs" id="focus-recommendation">Your task switching is higher than usual. A 5-min breathing session is advised.</p>
+                        </div>
+                    </section>
+                </main>
+            </div>
+
+            <!-- ================= SCREEN 2: INSIGHTS (ANALYTICS) ================= -->
+            <div class="app-screen" id="screen-insights">
+                <!-- Top Header Bar -->
+                <header class="sticky top-0 w-full bg-white z-40 flex justify-between items-center px-base py-sm border-b border-hairline-soft">
+                    <div class="flex items-center gap-xs">
+                        <span class="material-symbols-outlined text-commerce-cobalt">analytics</span>
+                        <h1 class="font-bold text-[20px] text-on-surface tracking-tight">Focus Analytics</h1>
+                    </div>
+                </header>
+
+                <main class="px-base py-md space-y-base flex-1 pb-[160px]">
+                    <h2 class="text-heading-sm font-medium tracking-tight text-on-background">24-Hour Behavioral Pattern</h2>
+
+                    <!-- Chart Bento Card -->
+                    <div class="bg-white border border-hairline-soft rounded-xxxl p-xl overflow-hidden relative">
+                        <div class="flex justify-between items-start mb-lg">
+                            <div>
+                                <p class="text-caption text-secondary uppercase tracking-widest font-bold">Peak Activity</p>
+                                <h2 class="text-heading-sm font-bold text-on-background">01:42 AM</h2>
+                            </div>
+                            <div class="px-sm py-xxs bg-surface-soft rounded-full">
+                                <span class="text-button-md text-fb-blue font-bold">+18% vs yesterday</span>
+                            </div>
+                        </div>
+
+                        <!-- SVG Chart Area -->
+                        <div class="chart-container mt-md relative h-[150px]">
+                            <svg class="w-full h-full" viewBox="0 0 400 150" id="insights-svg">
+                                <!-- Grid Lines -->
+                                <line stroke="#DEE3E9" stroke-width="1" x1="0" x2="400" y1="140" y2="140"></line>
+                                <line stroke="#F1F4F7" stroke-dasharray="4" stroke-width="1" x1="0" x2="400" y1="70" y2="70"></line>
+                                
+                                <!-- Area Fill Gradient -->
+                                <path id="insights-chart-area" d="" fill="url(#gradient-fill)" opacity="0.1"></path>
+                                
+                                <!-- Smooth Path Line -->
+                                <path id="insights-chart-line" class="smooth-line" d="" fill="none" stroke="#0064E0" stroke-linecap="round" stroke-width="3"></path>
+                                
+                                <!-- Peak Highlight Dot -->
+                                <circle id="insights-chart-dot" cx="160" cy="20" fill="#0064E0" r="6" class="animate-pulse"></circle>
+                                <circle id="insights-chart-ring" cx="160" cy="20" fill="none" opacity="0.3" r="10" stroke="#0064E0" stroke-width="2"></circle>
+                                
+                                <defs>
+                                    <linearGradient id="gradient-fill" x1="0%" x2="0%" y1="0%" y2="100%">
+                                        <stop id="grad-stop-1" offset="0%" style="stop-color:#0064E0;stop-opacity:1"></stop>
+                                        <stop id="grad-stop-2" offset="100%" style="stop-color:#0064E0;stop-opacity:0"></stop>
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <!-- Dynamic Callout Label -->
+                            <div class="absolute" id="insights-anomaly-badge">
+                                Anomaly Detected
+                            </div>
+                        </div>
+
+                        <div class="flex justify-between mt-base text-caption text-secondary font-medium">
+                            <span>12 PM</span>
+                            <span>6 PM</span>
+                            <span>12 AM</span>
+                            <span>6 AM</span>
+                        </div>
+                    </div>
+
+                    <!-- Feature Breakdown Stack -->
+                    <div class="space-y-base">
+                        <!-- Breakdown 1: Session Dynamics -->
+                        <div class="p-base border border-hairline-soft rounded-xl bg-white transition-colors">
+                            <div class="flex items-center gap-md mb-md">
+                                <div class="w-10 h-10 rounded-full bg-surface-soft flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-commerce-cobalt">hourglass_empty</span>
+                                </div>
+                                <div>
+                                    <h3 class="text-body-md font-bold text-on-surface">Session Dynamics</h3>
+                                    <p class="text-body-sm text-secondary">Average usage duration today</p>
+                                </div>
+                            </div>
+                            <div class="w-full bg-surface-container rounded-full h-2 overflow-hidden">
+                                <div id="insights-bar-session" class="h-full w-[30%] transition-all duration-1000 ease-in-out"></div>
+                            </div>
+                            <div class="flex justify-between mt-xs">
+                                <span class="text-caption text-secondary font-medium" id="insights-lbl-session">30% Intensity</span>
+                                <span class="text-caption text-on-surface font-bold" id="insights-val-session">2.4h Total</span>
+                            </div>
+                        </div>
+
+                        <!-- Breakdown 2: Interaction Micro-Behaviors -->
+                        <div class="p-base border border-hairline-soft rounded-xl bg-white">
+                            <h3 class="text-body-md font-bold text-on-surface mb-md">Interaction Micro-Behaviors</h3>
+                            <div class="grid grid-cols-2 gap-base">
+                                <div class="bg-surface-soft p-base rounded-lg border border-hairline-soft/50">
+                                    <p class="text-caption text-secondary mb-xxs font-medium">Scroll Speed</p>
+                                    <div class="flex items-baseline gap-xxs">
+                                        <span class="text-heading-sm font-bold" id="insights-val-scroll-rate">142</span>
+                                        <span class="text-caption text-secondary">px/s</span>
+                                    </div>
+                                </div>
+                                <div class="bg-surface-soft p-base rounded-lg border border-hairline-soft/50">
+                                    <p class="text-caption text-secondary mb-xxs font-medium">Skip Rate</p>
+                                    <div class="flex items-baseline gap-xxs">
+                                        <span class="text-heading-sm font-bold" id="insights-val-skip-rate">64%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Breakdown 3: Task Switching -->
+                        <div class="p-base border border-hairline-soft rounded-xl bg-white flex justify-between items-center">
+                            <div class="flex items-center gap-md">
+                                <div class="w-10 h-10 rounded-full bg-surface-soft flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-commerce-cobalt">sync_alt</span>
+                                </div>
+                                <div>
+                                    <h3 class="text-body-md font-bold text-on-surface">Task Switching</h3>
+                                    <p class="text-body-sm text-secondary">Rapid Inter-app Switches</p>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-heading-sm font-bold" id="insights-val-switches">8.2</span>
+                            </div>
+                        </div>
+
+                        <!-- Breakdown 4: Temporal Distribution -->
+                        <div class="p-base border border-hairline-soft rounded-xl bg-white border-l-4 border-l-commerce-cobalt">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="text-body-md font-bold text-on-surface">Temporal Distribution</h3>
+                                    <p class="text-body-sm text-secondary mb-md">Post-midnight Session Ratio</p>
+                                    <div class="flex gap-xxs items-center">
+                                        <span class="material-symbols-outlined text-commerce-cobalt text-[14px]" style="font-variation-settings: 'FILL' 1;">bedtime</span>
+                                        <span class="text-caption text-commerce-cobalt font-bold">Midnight usage detected</span>
+                                    </div>
+                                </div>
+                                <div class="relative w-16 h-16 shrink-0">
+                                    <svg class="w-full h-full transform -rotate-90">
+                                        <circle cx="32" cy="32" fill="transparent" r="28" stroke="#F1F4F7" stroke-width="5"></circle>
+                                        <circle cx="32" cy="32" fill="transparent" r="28" stroke="#0064E0" stroke-dasharray="175.9" stroke-dashoffset="44" stroke-width="5"></circle>
+                                    </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center text-caption font-bold text-on-surface" id="insights-lbl-night">75%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+                
+                <!-- Sticky Bottom Bar -->
+                <footer class="absolute bottom-0 left-0 w-full bg-white border-t border-hairline-soft p-base z-30 flex flex-col">
+                    <!-- Standard Action Primary Button - 100px Black Pill shape -->
+                    <button class="btn-primary w-full" id="btn-view-plan-insights">
+                        View Prevention Plan
+                    </button>
+                </footer>
+            </div>
+
+            <!-- ================= SCREEN 3: ALERTS (ALERT HISTORY) ================= -->
+            <div class="app-screen" id="screen-alerts">
+                <!-- Top Header Bar -->
+                <header class="sticky top-0 w-full bg-white z-40 flex justify-between items-center px-base py-sm border-b border-hairline-soft">
+                    <div class="flex items-center gap-xs">
+                        <span class="material-symbols-outlined text-commerce-cobalt">notifications_active</span>
+                        <h1 class="font-bold text-[20px] text-on-surface tracking-tight">Alert History</h1>
+                    </div>
+                </header>
+
+                <main class="px-base py-md space-y-base flex-1">
+                    <div class="flex justify-between items-center mb-xs">
+                        <h2 class="text-body-md font-bold text-on-surface">Recent Attention Logs</h2>
+                        <span class="text-caption text-secondary font-medium">Passive Monitors Active</span>
+                    </div>
+
+                    <!-- Alerts List Container -->
+                    <div class="space-y-base" id="alerts-list-container">
+                        <!-- Dynamically filled by app.js -->
+                    </div>
+                </main>
+            </div>
+
+            <!-- ================= SCREEN 4: MEDITATE (PREVENTION PLAN) ================= -->
+            <div class="app-screen" id="screen-meditate">
+                <!-- Top Header Bar -->
+                <header class="sticky top-0 w-full bg-white z-40 flex justify-between items-center px-base py-sm border-b border-hairline-soft">
+                    <div class="flex items-center gap-xs">
+                        <span class="material-symbols-outlined text-commerce-cobalt">self_improvement</span>
+                        <h1 class="font-bold text-[20px] text-on-surface tracking-tight">Wellness Assistant</h1>
+                    </div>
+                </header>
+
+                <main class="w-full flex-1 flex flex-col">
+                    <!-- High Priority Status Banner (adheres strictly to Meta palette rules) -->
+                    <div class="px-xl py-md flex items-center justify-between text-white transition-colors duration-300" id="plan-status-banner">
+                        <div class="flex items-center gap-xs">
+                            <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+                            <span class="font-bold text-body-sm tracking-tight" id="plan-banner-text">Attention Risk Status</span>
+                        </div>
+                        <span class="material-symbols-outlined text-[20px]">info</span>
+                    </div>
+
+                    <div class="px-xl pt-lg pb-xl space-y-base">
+                        <!-- Hero Title -->
+                        <h2 class="text-heading-sm font-bold text-on-surface">Let's Reset Your Focus</h2>
+                        <p class="text-body-sm text-on-surface-variant leading-relaxed">Based on your recent app usage patterns, we've designed a specialized circuit-breaker plan to help you regain cognitive control.</p>
+                        
+                        <!-- Recommendations Bento Cards -->
+                        <div class="space-y-base">
+                            <!-- Card 1 -->
+                            <div class="bg-white p-base rounded-xl border border-hairline-soft flex items-start gap-md">
+                                <div class="w-10 h-10 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt shrink-0">
+                                    <span class="material-symbols-outlined">timer</span>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-body-md text-on-surface">Enable Micro-Breaks</h3>
+                                    <p class="text-body-sm text-on-surface-variant mt-xxs">Trigger soft, system-wide haptic reminders every 20 minutes of scrolling.</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Card 2 -->
+                            <div class="bg-white p-base rounded-xl border border-hairline-soft flex items-start gap-md">
+                                <div class="w-10 h-10 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt shrink-0">
+                                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bedtime</span>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-body-md text-on-surface">Nighttime Lockout</h3>
+                                    <p class="text-body-sm text-on-surface-variant mt-xxs">Restrict app launches post-midnight to protect your sleep hygiene.</p>
+                                </div>
+                            </div>
+
+                            <!-- Card 3 -->
+                            <div class="bg-white p-base rounded-xl border border-hairline-soft flex items-start gap-md">
+                                <div class="w-10 h-10 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt shrink-0">
+                                    <span class="material-symbols-outlined">extension</span>
+                                </div>
+                                <div>
+                                    <h3 class="font-bold text-body-md text-on-surface">Focus Mini-Games</h3>
+                                    <p class="text-body-sm text-on-surface-variant mt-xxs">Quick, science-backed games to reset neural pathways after scroll timers expire.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Atmospheric Data Graphic wrapper -->
+                        <div class="bg-surface-soft p-base rounded-xxxl border border-hairline-soft space-y-sm">
+                            <p class="text-body-sm text-on-surface-variant text-center font-medium">Plan implements a 42% focus window increase over 7 days.</p>
+                            <div class="flex gap-md justify-center">
+                                <div class="flex items-center gap-xxs">
+                                    <div class="w-3 h-3 rounded-full bg-commerce-cobalt"></div>
+                                    <span class="text-caption text-secondary">Planned Growth</span>
+                                </div>
+                                <div class="flex items-center gap-xxs">
+                                    <div class="w-3 h-3 rounded-full bg-hairline"></div>
+                                    <span class="text-caption text-secondary">Current Trend</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Critical CTA Button - Saturated Cobalt Blue (#0064E0) is reserved for this critical action -->
+                        <div class="pt-sm space-y-sm flex flex-col items-center">
+                            <button class="btn-cobalt w-full" id="btn-activate-meditate">
+                                Activate Prevention Plan
+                            </button>
+                            <p class="text-caption text-secondary text-center leading-tight">
+                                This is an AI-assisted self-awareness tool, not a clinical diagnosis.
+                            </p>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <!-- ================= SCREEN 5: PROFILE (SETTINGS & SIMULATOR) ================= -->
+            <div class="app-screen" id="screen-settings">
+                <!-- Top Header Bar -->
+                <header class="sticky top-0 w-full bg-white z-40 flex justify-between items-center px-base py-sm border-b border-hairline-soft">
+                    <div class="flex items-center gap-xs">
+                        <span class="material-symbols-outlined text-commerce-cobalt">person</span>
+                        <h1 class="font-bold text-[20px] text-on-surface tracking-tight">Settings & Simulator</h1>
+                    </div>
+                </header>
+
+                <main class="px-base py-md space-y-lg flex-1">
+                    
+                    <!-- Section A: Behavior Signal Simulator (Visual controls to alter score) -->
+                    <section class="space-y-sm">
+                        <div class="flex items-center gap-xs mb-xxs px-xxs">
+                            <div class="w-8 h-8 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt">
+                                <span class="material-symbols-outlined !text-[20px]">science</span>
+                            </div>
+                            <h2 class="font-bold text-body-md text-on-surface">Signal Simulator</h2>
+                        </div>
+                        
+                        <div class="bg-white border border-hairline-soft rounded-xl p-base space-y-md">
+                            <!-- Metric 1: Session Duration -->
+                            <div class="space-y-xxs">
+                                <div class="flex justify-between text-body-sm">
+                                    <span class="font-medium text-on-surface">Session Duration (N1)</span>
+                                    <span class="text-commerce-cobalt font-bold text-caption" id="val-session">2.5 hrs</span>
+                                </div>
+                                <input type="range" class="w-full accent-black h-1 bg-surface-soft rounded-lg appearance-none cursor-pointer" id="slider-session" min="0" max="8.0" step="0.1" value="2.5">
+                            </div>
+
+                            <!-- Metric 2: Launch Frequency -->
+                            <div class="space-y-xxs">
+                                <div class="flex justify-between text-body-sm">
+                                    <span class="font-medium text-on-surface">Launch Frequency</span>
+                                    <span class="text-commerce-cobalt font-bold text-caption" id="val-launches">12 launches</span>
+                                </div>
+                                <input type="range" class="w-full accent-black h-1 bg-surface-soft rounded-lg appearance-none cursor-pointer" id="slider-launches" min="0" max="30" step="1" value="12">
+                            </div>
+
+                            <!-- Metric 3: Scroll Velocity -->
+                            <div class="space-y-xxs">
+                                <div class="flex justify-between text-body-sm">
+                                    <span class="font-medium text-on-surface">Scroll Velocity (N2)</span>
+                                    <span class="text-commerce-cobalt font-bold text-caption" id="val-velocity">142 px/s</span>
+                                </div>
+                                <input type="range" class="w-full accent-black h-1 bg-surface-soft rounded-lg appearance-none cursor-pointer" id="slider-velocity" min="0" max="250" step="5" value="142">
+                            </div>
+
+                            <!-- Metric 4: Skip Frequency -->
+                            <div class="space-y-xxs">
+                                <div class="flex justify-between text-body-sm">
+                                    <span class="font-medium text-on-surface">Skip Frequency</span>
+                                    <span class="text-commerce-cobalt font-bold text-caption" id="val-skips">64%</span>
+                                </div>
+                                <input type="range" class="w-full accent-black h-1 bg-surface-soft rounded-lg appearance-none cursor-pointer" id="slider-skips" min="0" max="100" step="1" value="64">
+                            </div>
+
+                            <!-- Metric 5: Switch Frequency (N3) -->
+                            <div class="space-y-xxs">
+                                <div class="flex justify-between text-body-sm">
+                                    <span class="font-medium text-on-surface">Task Switches (N3)</span>
+                                    <span class="text-commerce-cobalt font-bold text-caption" id="val-switches">8.2/hr</span>
+                                </div>
+                                <input type="range" class="w-full accent-black h-1 bg-surface-soft rounded-lg appearance-none cursor-pointer" id="slider-switches" min="0" max="20.0" step="0.5" value="8.2">
+                            </div>
+
+                            <!-- Metric 6: Foreground Latency -->
+                            <div class="space-y-xxs">
+                                <div class="flex justify-between text-body-sm">
+                                    <span class="font-medium text-on-surface">Foreground Latency</span>
+                                    <span class="text-commerce-cobalt font-bold text-caption" id="val-latency">1.5s</span>
+                                </div>
+                                <input type="range" class="w-full accent-black h-1 bg-surface-soft rounded-lg appearance-none cursor-pointer" id="slider-latency" min="0" max="5.0" step="0.1" value="1.5">
+                            </div>
+
+                            <!-- Metric 7: Night Ratio (N4) -->
+                            <div class="space-y-xxs">
+                                <div class="flex justify-between text-body-sm">
+                                    <span class="font-medium text-on-surface">Night Session Ratio (N4)</span>
+                                    <span class="text-commerce-cobalt font-bold text-caption" id="val-night">75%</span>
+                                </div>
+                                <input type="range" class="w-full accent-black h-1 bg-surface-soft rounded-lg appearance-none cursor-pointer" id="slider-night" min="0" max="100" step="5" value="75">
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Section B: Settings & Preferences -->
+                    <section class="space-y-sm">
+                        <div class="flex items-center gap-xs mb-xxs px-xxs">
+                            <div class="w-8 h-8 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt">
+                                <span class="material-symbols-outlined !text-[20px]">security</span>
+                            </div>
+                            <h2 class="font-bold text-body-md text-on-surface">Data & Privacy</h2>
+                        </div>
+                        <div class="bg-white border border-hairline-soft rounded-xl overflow-hidden divide-y divide-hairline-soft">
+                            <!-- Toggle 1: local storage -->
+                            <div class="flex items-center justify-between p-base">
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-body-sm text-on-surface">Local-Only Storage</span>
+                                    <span class="text-caption text-secondary">Keep all behavioral logs on device.</span>
+                                </div>
+                                <button class="toggle-switch-btn active" data-toggle="localStorageOnly">
+                                    <span class="toggle-switch-dot"></span>
+                                </button>
+                            </div>
+                            <!-- Toggle 2: Quiet hours -->
+                            <div class="flex items-center justify-between p-base">
+                                <div class="flex flex-col">
+                                    <span class="font-bold text-body-sm text-on-surface">Quiet Hours Lock</span>
+                                    <span class="text-caption text-secondary">Auto-suppress alerts from 10 PM.</span>
+                                </div>
+                                <button class="toggle-switch-btn active" data-toggle="quietHours">
+                                    <span class="toggle-switch-dot"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Passive Monitoring Sensors -->
+                    <section class="space-y-sm">
+                        <div class="flex items-center gap-xs mb-xxs px-xxs">
+                            <div class="w-8 h-8 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt">
+                                <span class="material-symbols-outlined !text-[20px]">visibility</span>
+                            </div>
+                            <h2 class="font-bold text-body-md text-on-surface">Passive Monitoring</h2>
+                        </div>
+                        <div class="bg-white border border-hairline-soft rounded-xl overflow-hidden divide-y divide-hairline-soft">
+                            <div class="flex items-center justify-between p-base">
+                                <span class="text-body-sm font-medium text-on-surface">Session Dynamics Monitoring</span>
+                                <button class="toggle-switch-btn active" data-toggle="sessionDynamics">
+                                    <span class="toggle-switch-dot"></span>
+                                </button>
+                            </div>
+                            <div class="flex items-center justify-between p-base">
+                                <span class="text-body-sm font-medium text-on-surface">Micro-Behaviors Monitoring</span>
+                                <button class="toggle-switch-btn active" data-toggle="microBehaviors">
+                                    <span class="toggle-switch-dot"></span>
+                                </button>
+                            </div>
+                            <div class="flex items-center justify-between p-base">
+                                <span class="text-body-sm font-medium text-on-surface">Task-Switching Monitoring</span>
+                                <button class="toggle-switch-btn active" data-toggle="taskSwitching">
+                                    <span class="toggle-switch-dot"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <footer class="text-center pt-md pb-xl">
+                        <p class="text-caption text-secondary font-medium">Attention Guard v1.0 • Privacy-Preserving AI Model</p>
+                    </footer>
+                </main>
+            </div>
+
+            <!-- Common Navigation Bar at bottom -->
+            <nav class="absolute bottom-0 left-0 w-full z-40 flex justify-around items-center px-xs pb-base pt-xs bg-white border-t border-hairline-soft shadow-lg">
+                <!-- Tab 1: Today -->
+                <button class="bottom-nav-btn flex flex-col items-center justify-center py-xs px-base rounded-full" data-tab="today">
+                    <span class="material-symbols-outlined" data-weight="fill">calendar_today</span>
+                    <span class="text-caption font-bold mt-[2px]">Today</span>
+                </button>
+                <!-- Tab 2: Insights -->
+                <button class="bottom-nav-btn flex flex-col items-center justify-center py-xs px-base rounded-full text-secondary opacity-60" data-tab="insights">
+                    <span class="material-symbols-outlined">analytics</span>
+                    <span class="text-caption font-bold mt-[2px]">Insights</span>
+                </button>
+                <!-- Tab 3: Alerts -->
+                <button class="bottom-nav-btn flex flex-col items-center justify-center py-xs px-base rounded-full text-secondary opacity-60" data-tab="alerts">
+                    <span class="material-symbols-outlined">notifications_active</span>
+                    <span class="text-caption font-bold mt-[2px]">Alerts</span>
+                </button>
+                <!-- Tab 4: Meditate (Prevention Plan) -->
+                <button class="bottom-nav-btn flex flex-col items-center justify-center py-xs px-base rounded-full text-secondary opacity-60" data-tab="meditate">
+                    <span class="material-symbols-outlined">self_improvement</span>
+                    <span class="text-caption font-bold mt-[2px]">Meditate</span>
+                </button>
+                <!-- Tab 5: Profile (Settings) -->
+                <button class="bottom-nav-btn flex flex-col items-center justify-center py-xs px-base rounded-full text-secondary opacity-60" data-tab="settings">
+                    <span class="material-symbols-outlined">person</span>
+                    <span class="text-caption font-bold mt-[2px]">Profile</span>
+                </button>
+            </nav>
+
+        </div> <!-- end app-viewport -->
+
+        <!-- ================= MODAL OVERLAYS ================= -->
+
+        <!-- A. Behavioral Alert Modal (Moderate Risk Nudge) -->
+        <div class="modal-overlay fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center px-base" id="behavioral-alert-modal">
+            <!-- Alert Card -->
+            <div class="modal-container relative bg-white w-full max-w-[340px] rounded-xxl border border-hairline-soft shadow-xl p-xl flex flex-col items-center text-center">
+                <!-- Top-aligned Pill Badge -->
+                <div class="mb-lg">
+                    <span class="bg-warning-yellow text-white px-base py-xxs rounded-full text-caption font-bold uppercase tracking-wider">
+                        Attention Nudge
+                    </span>
+                </div>
+                <!-- Icon -->
+                <div class="mb-base text-commerce-cobalt">
+                    <span class="material-symbols-outlined !text-[44px]">self_improvement</span>
+                </div>
+                <!-- Header -->
+                <h2 class="text-heading-sm font-bold text-on-surface mb-xs leading-tight">
+                    Late-Night Scrolling Detected
+                </h2>
+                <!-- Body Text -->
+                <p class="text-body-sm text-secondary mb-lg leading-relaxed">
+                    You’ve spent 40% more time on short-form videos after midnight this week. Taking a short break can help restore your attention span tomorrow.
+                </p>
+                
+                <span class="text-caption text-secondary font-bold mb-lg" id="modal-nudge-score">API Score: 0.52</span>
+
+                <!-- Action Button Stack -->
+                <div class="flex flex-col w-full gap-sm">
+                    <!-- Got It - Standard Action - 100px Black Pill Button shape -->
+                    <button class="btn-primary w-full" id="btn-close-nudge">
+                        Got It
+                    </button>
+                    <!-- Set Reminder - Outlined Secondary button -->
+                    <button class="btn-secondary w-full">
+                        Set Reminder
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- B. Prevention Plan Overlay Modal (High Risk Full-Screen) -->
+        <div class="modal-overlay fixed inset-0 z-50 bg-white flex flex-col" id="prevention-plan-overlay">
+            
+            <!-- Top Close Button (standard secondary layout icon button) -->
+            <div class="w-full flex justify-end px-base pt-section pb-xs">
+                <button class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center hover:bg-surface-container-high transition-colors active:scale-95 border border-hairline-soft" id="btn-close-overlay">
+                    <span class="material-symbols-outlined text-on-surface !text-[20px]">close</span>
+                </button>
+            </div>
+
+            <!-- Content Scroll Area -->
+            <div class="flex-1 overflow-y-auto px-base pb-hero flex flex-col items-center">
+                <div class="w-full max-w-2xl">
+                    
+                    <!-- Alert Hero Card -->
+                    <section class="w-full rounded-xxxl border border-hairline-soft overflow-hidden bg-white">
+                        <div class="relative h-44 w-full">
+                            <img class="w-full h-full object-cover grayscale-[0.3]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeagcLotFsRejB-7ojFePLLa-HfcvlTWChZgKS8JUphjFBTySIKYczzm1f9l8-XivwPv6nrtHH4zd0AAbXQo1_myIJeLJsbcGtRj5PnXMyeOik_bwRwe2GYzqZjqOovQyqh86gSHOicdJIjbunnAucRRhhwhKfG_ATAK-BMYz9gd_0hsTGHAdRoHtVs3XFbTsZDJTQ0AvYal9Uv6UqD-W3LhHjljP-SfvGrHne_3rTYKHRJHqzhVhxig" alt="Visual Graphic">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                            <div class="absolute top-base left-base">
+                                <span class="bg-critical-red text-white text-caption font-bold px-md py-[4px] rounded-full shadow-sm" id="overlay-title-badge">
+                                    High Risk Detected
+                                </span>
+                            </div>
+                        </div>
+                        <div class="p-xl">
+                            <h1 class="text-heading-sm font-bold text-on-surface mb-sm">Attention Pattern Alert</h1>
+                            <p class="text-body-sm text-on-surface-variant leading-relaxed">
+                                Your attention performance score indicates severe pattern fragmentation over the last 24 hours. This suggests high cognitive load or sustained external distractions.
+                            </p>
+                            <p class="text-caption text-secondary font-bold mt-md block">
+                                This is an AI self-awareness nudge, not a medical diagnosis.
+                            </p>
+                        </div>
+                    </section>
+
+                    <!-- Suggested Reset Steps -->
+                    <section class="w-full mt-lg">
+                        <h2 class="text-body-md font-bold text-on-surface mb-md">Suggested Steps</h2>
+                        <div class="space-y-base">
+                            <!-- Steps Checkbox 1 -->
+                            <label class="flex items-center p-base border border-hairline-soft rounded-xl bg-white hover:bg-surface-container-low transition-all cursor-pointer group active:scale-[0.98]">
+                                <input class="w-5 h-5 rounded-full border-2 border-hairline text-commerce-cobalt focus:ring-commerce-cobalt focus:ring-offset-0 transition-all checked:bg-commerce-cobalt mr-base" type="checkbox">
+                                <div class="flex-1">
+                                    <h3 class="text-body-md font-bold text-on-surface leading-tight">Enable Micro-Breaks</h3>
+                                    <p class="text-body-sm text-secondary">System-wide 30-second haptic nudges every 25 minutes.</p>
+                                </div>
+                                <span class="material-symbols-outlined text-secondary group-hover:text-commerce-cobalt">timer</span>
+                            </label>
+                            
+                            <!-- Steps Checkbox 2 -->
+                            <label class="flex items-center p-base border border-hairline-soft rounded-xl bg-white hover:bg-surface-container-low transition-all cursor-pointer group active:scale-[0.98]">
+                                <input class="w-5 h-5 rounded-full border-2 border-hairline text-commerce-cobalt focus:ring-commerce-cobalt focus:ring-offset-0 transition-all checked:bg-commerce-cobalt mr-base" type="checkbox">
+                                <div class="flex-1">
+                                    <h3 class="text-body-md font-bold text-on-surface leading-tight">Late-Night Window Lock</h3>
+                                    <p class="text-body-sm text-secondary">Restrict non-essential tabs from 11 PM to 6 AM.</p>
+                                </div>
+                                <span class="material-symbols-outlined text-secondary group-hover:text-commerce-cobalt">bedtime</span>
+                            </label>
+
+                            <!-- Steps Checkbox 3 -->
+                            <label class="flex items-center p-base border border-hairline-soft rounded-xl bg-white hover:bg-surface-container-low transition-all cursor-pointer group active:scale-[0.98]">
+                                <input class="w-5 h-5 rounded-full border-2 border-hairline text-commerce-cobalt focus:ring-commerce-cobalt focus:ring-offset-0 transition-all checked:bg-commerce-cobalt mr-base" type="checkbox">
+                                <div class="flex-1">
+                                    <h3 class="text-body-md font-bold text-on-surface leading-tight">Focus Mini-Games</h3>
+                                    <p class="text-body-sm text-secondary">Short, science-backed games to reset neural pathways during high load.</p>
+                                </div>
+                                <span class="material-symbols-outlined text-secondary group-hover:text-commerce-cobalt">videogame_asset</span>
+                            </label>
+                        </div>
+                    </section>
+
+                    <!-- Bottom Action Buttons: Activate Prevention Plan -->
+                    <section class="w-full mt-xl flex flex-col gap-sm">
+                        <!-- Saturated Cobalt Blue reserved strictly for critical action CTA -->
+                        <button class="btn-cobalt w-full" id="btn-activate-plan-overlay">
+                            Activate Prevention Plan
+                        </button>
+                        <!-- Secondary Action - Black Outlined button -->
+                        <button class="btn-secondary w-full" id="btn-remind-later">
+                            Remind Me Later
+                        </button>
+                    </section>
+                    
+                </div>
+            </div>
+            
+        </div>
+
+    </div> <!-- end phone-frame -->
+
+    <!-- Load JavaScript -->
+    <script src="app.js"></script>
+    <script>
+        // Additional Checkbox container interaction styling
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const parent = this.closest('label');
+                if (this.checked) {
+                    parent.classList.add('border-commerce-cobalt', 'bg-surface-container-low');
+                    parent.classList.remove('bg-white');
+                } else {
+                    parent.classList.remove('border-commerce-cobalt', 'bg-surface-container-low');
+                    parent.classList.add('bg-white');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

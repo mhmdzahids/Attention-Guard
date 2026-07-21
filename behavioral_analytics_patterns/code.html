@@ -1,0 +1,318 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Behavioral Analytics | Meta Style</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "tertiary-fixed-dim": "#ffba42",
+                    "secondary-fixed-dim": "#c6c6c6",
+                    "tertiary-fixed": "#ffddaf",
+                    "tertiary-container": "#8f6100",
+                    "commerce-cobalt-deep": "#0457CB",
+                    "promo-gold": "#F7B928",
+                    "surface": "#f9f9fd",
+                    "inverse-on-surface": "#f0f0f4",
+                    "inverse-surface": "#2f3034",
+                    "surface-container": "#ededf1",
+                    "on-background": "#1a1c1f",
+                    "on-error": "#ffffff",
+                    "surface-container-low": "#f3f3f7",
+                    "on-secondary-fixed-variant": "#474747",
+                    "error": "#ba1a1a",
+                    "on-tertiary-fixed-variant": "#614000",
+                    "primary": "#004db0",
+                    "hairline-soft": "#DEE3E9",
+                    "surface-container-high": "#e8e8ec",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-container": "#646464",
+                    "warning-yellow": "#F2A918",
+                    "primary-container": "#0064e0",
+                    "surface-dim": "#d9dade",
+                    "on-tertiary-fixed": "#281800",
+                    "inverse-primary": "#afc6ff",
+                    "secondary": "#5e5e5e",
+                    "critical-red": "#E41E3F",
+                    "ink-button": "#000000",
+                    "on-secondary": "#ffffff",
+                    "secondary-container": "#e2e2e2",
+                    "primary-fixed": "#d9e2ff",
+                    "surface-tint": "#0059c8",
+                    "on-secondary-fixed": "#1b1b1b",
+                    "secondary-fixed": "#e2e2e2",
+                    "hairline": "#CED0D4",
+                    "outline-variant": "#c2c6d6",
+                    "commerce-cobalt": "#0064E0",
+                    "on-tertiary-container": "#ffe8ca",
+                    "on-surface-variant": "#424754",
+                    "surface-bright": "#f9f9fd",
+                    "on-primary-fixed": "#001944",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed-variant": "#004299",
+                    "on-surface": "#1a1c1f",
+                    "background": "#f9f9fd",
+                    "outline": "#727786",
+                    "on-primary": "#ffffff",
+                    "surface-variant": "#e2e2e6",
+                    "on-primary-container": "#e6ebff",
+                    "on-error-container": "#93000a",
+                    "surface-container-highest": "#e2e2e6",
+                    "fb-blue": "#1876F2",
+                    "tertiary": "#6f4b00",
+                    "error-container": "#ffdad6",
+                    "surface-soft": "#F1F4F7",
+                    "primary-fixed-dim": "#afc6ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "xxxl": "32px",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xs": "8px",
+                    "xxs": "4px",
+                    "hero": "120px",
+                    "xxl": "32px",
+                    "xl": "24px",
+                    "xxxl": "40px",
+                    "section": "64px",
+                    "md": "12px",
+                    "base": "16px",
+                    "lg": "20px",
+                    "sm": "10px"
+            },
+            "fontFamily": {
+                    "body-md": ["Be Vietnam Pro", "sans-serif"],
+                    "button-md": ["Be Vietnam Pro", "sans-serif"],
+                    "body-md-bold": ["Be Vietnam Pro", "sans-serif"],
+                    "caption": ["Be Vietnam Pro", "sans-serif"],
+                    "hero-display": ["Be Vietnam Pro", "sans-serif"],
+                    "display-lg": ["Be Vietnam Pro", "sans-serif"],
+                    "subtitle-lg": ["Be Vietnam Pro", "sans-serif"],
+                    "heading-md": ["Be Vietnam Pro", "sans-serif"],
+                    "heading-lg": ["Be Vietnam Pro", "sans-serif"],
+                    "heading-sm": ["Be Vietnam Pro", "sans-serif"],
+                    "body-sm": ["Be Vietnam Pro", "sans-serif"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #FFFFFF;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .chart-container {
+            position: relative;
+            height: 180px;
+            width: 100%;
+        }
+        .pattern-overlay {
+            background-image: radial-gradient(#DEE3E9 0.5px, transparent 0.5px);
+            background-size: 16px 16px;
+        }
+        .smooth-line {
+            stroke-dasharray: 1000;
+            stroke-dashoffset: 1000;
+            animation: draw 2s ease-out forwards;
+        }
+        @keyframes draw {
+            to { stroke-dashoffset: 0; }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-body-md text-on-surface">
+<!-- Top AppBar (from Shared Components JSON) -->
+<header class="flex items-center justify-between px-base h-16 w-full sticky top-0 bg-white z-50 border-b border-hairline-soft">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary cursor-pointer active:scale-95 duration-100">arrow_back</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-caption text-secondary tracking-tight">Home / Focus Analytics</span>
+</div>
+</div>
+<div class="flex items-center gap-base">
+<span class="material-symbols-outlined text-secondary cursor-pointer hover:bg-surface-container-low p-xs rounded-full transition-colors">more_vert</span>
+</div>
+</header>
+<main class="px-base pb-32">
+<!-- Page Title -->
+<section class="py-lg">
+<h1 class="font-heading-sm text-heading-sm font-medium tracking-tight text-on-background">24-Hour Behavioral Pattern</h1>
+</section>
+<!-- Chart Card (Bento-style Full Width) -->
+<div class="bg-white border border-hairline-soft rounded-xxxl p-xl mb-xl overflow-hidden relative">
+<div class="flex justify-between items-start mb-lg">
+<div>
+<p class="font-caption text-caption text-secondary uppercase tracking-widest mb-xxs">Peak Activity</p>
+<h2 class="font-heading-sm text-heading-sm text-on-background">01:42 AM</h2>
+</div>
+<div class="px-sm py-xxs bg-surface-soft rounded-full">
+<span class="font-button-md text-button-md text-fb-blue">+18% vs yesterday</span>
+</div>
+</div>
+<!-- Visualization Area -->
+<div class="chart-container mt-md">
+<svg class="w-full h-full" viewBox="0 0 400 150">
+<!-- Grid Lines -->
+<line stroke="#DEE3E9" stroke-width="1" x1="0" x2="400" y1="140" y2="140"></line>
+<line stroke="#F1F4F7" stroke-dasharray="4" stroke-width="1" x1="0" x2="400" y1="70" y2="70"></line>
+<!-- Area Fill -->
+<path d="M0,140 C50,130 80,100 120,60 C160,20 200,100 240,110 C280,120 320,40 360,50 C380,55 400,60 400,60 V140 H0 Z" fill="url(#gradient-fill)" opacity="0.1"></path>
+<!-- Smooth Line -->
+<path class="smooth-line" d="M0,140 C50,130 80,100 120,60 C160,20 200,100 240,110 C280,120 320,40 360,50 C380,55 400,60" fill="none" stroke="#004db0" stroke-linecap="round" stroke-width="3"></path>
+<!-- Peak Highlight Dot -->
+<circle class="animate-pulse" cx="160" cy="20" fill="#1876F2" r="6"></circle>
+<circle cx="160" cy="20" fill="none" opacity="0.3" r="10" stroke="#1876F2" stroke-width="2"></circle>
+<defs>
+<linearGradient id="gradient-fill" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#004db0;stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:#004db0;stop-opacity:0"></stop>
+</linearGradient>
+</defs>
+</svg>
+<!-- Callout Label -->
+<div class="absolute top-[10px] left-[175px] bg-fb-blue text-white text-[10px] px-xs py-xxs rounded shadow-sm font-bold">
+                    Anomaly Detected
+                </div>
+</div>
+<div class="flex justify-between mt-base font-caption text-caption text-secondary">
+<span>12 PM</span>
+<span>6 PM</span>
+<span>12 AM</span>
+<span>6 AM</span>
+</div>
+</div>
+<!-- Feature Breakdown Stack -->
+<div class="space-y-base">
+<!-- 1. Session Dynamics -->
+<div class="p-base border border-hairline-soft rounded-xl bg-white hover:bg-surface-soft transition-colors duration-200">
+<div class="flex items-center gap-md mb-md">
+<div class="w-10 h-10 rounded-full bg-surface-soft flex items-center justify-center">
+<span class="material-symbols-outlined text-commerce-cobalt">hourglass_empty</span>
+</div>
+<div>
+<h3 class="font-subtitle-lg text-body-md-bold text-on-surface">Session Dynamics</h3>
+<p class="font-body-sm text-body-sm text-secondary">Average usage duration today</p>
+</div>
+</div>
+<div class="w-full bg-surface-container rounded-full h-2 overflow-hidden">
+<div class="bg-commerce-cobalt h-full w-[30%] transition-all duration-1000 ease-in-out"></div>
+</div>
+<div class="flex justify-between mt-xs">
+<span class="font-caption text-caption text-secondary">30% Intensity</span>
+<span class="font-caption text-caption text-on-surface font-bold">2.4h Total</span>
+</div>
+</div>
+<!-- 2. Interaction Micro-Behaviors -->
+<div class="p-base border border-hairline-soft rounded-xl bg-white">
+<h3 class="font-subtitle-lg text-body-md-bold text-on-surface mb-md">Interaction Micro-Behaviors</h3>
+<div class="grid grid-cols-2 gap-base">
+<div class="bg-surface-soft p-base rounded-lg border border-hairline-soft/50">
+<p class="font-caption text-caption text-secondary mb-xxs">Fast Scrolling</p>
+<div class="flex items-baseline gap-xxs">
+<span class="font-heading-sm text-heading-sm font-bold">142</span>
+<span class="font-caption text-caption text-secondary">p/min</span>
+</div>
+</div>
+<div class="bg-surface-soft p-base rounded-lg border border-hairline-soft/50">
+<p class="font-caption text-caption text-secondary mb-xxs">Skip Rate</p>
+<div class="flex items-baseline gap-xxs">
+<span class="font-heading-sm text-heading-sm font-bold text-critical-red">64%</span>
+<span class="material-symbols-outlined text-critical-red text-[16px]">trending_up</span>
+</div>
+</div>
+</div>
+</div>
+<!-- 3. Task Switching -->
+<div class="p-base border border-hairline-soft rounded-xl bg-white flex justify-between items-center">
+<div class="flex items-center gap-md">
+<div class="w-10 h-10 rounded-full bg-surface-soft flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">sync_alt</span>
+</div>
+<div>
+<h3 class="font-subtitle-lg text-body-md-bold text-on-surface">Task Switching</h3>
+<p class="font-body-sm text-body-sm text-secondary">Rapid Inter-app Switches</p>
+</div>
+</div>
+<div class="text-right">
+<span class="font-heading-sm text-heading-sm font-medium">8.2<span class="text-body-sm text-secondary font-normal ml-1">avg</span></span>
+</div>
+</div>
+<!-- 4. Temporal Distribution -->
+<div class="p-base border border-hairline-soft rounded-xl bg-white border-l-4 border-l-fb-blue">
+<div class="flex justify-between items-start">
+<div>
+<h3 class="font-subtitle-lg text-body-md-bold text-on-surface">Temporal Distribution</h3>
+<p class="font-body-sm text-body-sm text-secondary mb-md">Post-midnight Session Ratio</p>
+<div class="flex gap-xxs items-center">
+<span class="material-symbols-outlined text-fb-blue text-sm" style="font-variation-settings: 'FILL' 1;">bedtime</span>
+<span class="font-caption text-caption text-fb-blue font-bold">High usage after 12:00 AM</span>
+</div>
+</div>
+<div class="relative w-16 h-16">
+<!-- Progress Ring Placeholder -->
+<svg class="w-full h-full transform -rotate-90">
+<circle cx="32" cy="32" fill="transparent" r="28" stroke="#F1F4F7" stroke-width="6"></circle>
+<circle cx="32" cy="32" fill="transparent" r="28" stroke="#1876F2" stroke-dasharray="175.9" stroke-dashoffset="44" stroke-width="6"></circle>
+</svg>
+<div class="absolute inset-0 flex items-center justify-center font-caption text-caption font-bold">75%</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Sticky Bottom Bar -->
+<footer class="fixed bottom-0 left-0 w-full bg-white border-t border-hairline-soft p-base z-[100] flex flex-col gap-base">
+<button class="w-full bg-ink-button text-white h-14 rounded-full font-button-md text-button-md active:scale-[0.98] transition-transform flex items-center justify-center gap-xs">
+            View Prevention Plan
+            <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</footer>
+<!-- Bottom Nav Bar (From Shared Components JSON) -->
+<nav class="hidden md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-base py-xs bg-surface dark:bg-inverse-surface shadow-2xl z-50">
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full w-12 h-12">
+<span class="material-symbols-outlined">dashboard</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant w-12 h-12">
+<span class="material-symbols-outlined">videocam</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant w-12 h-12">
+<span class="material-symbols-outlined">bar_chart</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant w-12 h-12">
+<span class="material-symbols-outlined">settings</span>
+</div>
+</nav>
+<script>
+        // Micro-interaction: Update progress bar on scroll or load
+        document.addEventListener('DOMContentLoaded', () => {
+            const bars = document.querySelectorAll('.bg-commerce-cobalt');
+            bars.forEach(bar => {
+                const width = bar.style.width;
+                bar.style.width = '0%';
+                setTimeout(() => {
+                    bar.style.width = width;
+                }, 300);
+            });
+        });
+    </script>
+</body></html>

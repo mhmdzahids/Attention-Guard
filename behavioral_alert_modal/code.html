@@ -1,0 +1,185 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>MindState - Behavioral Alert</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@100;300;400;500;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#c2c6d6",
+                    "on-tertiary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-error": "#ffffff",
+                    "on-secondary-fixed": "#1b1b1b",
+                    "primary-fixed-dim": "#afc6ff",
+                    "surface-soft": "#F1F4F7",
+                    "tertiary-fixed-dim": "#ffba42",
+                    "promo-gold": "#F7B928",
+                    "secondary-fixed-dim": "#c6c6c6",
+                    "on-surface": "#1a1c1f",
+                    "inverse-surface": "#2f3034",
+                    "ink-button": "#000000",
+                    "hairline": "#CED0D4",
+                    "tertiary-fixed": "#ffddaf",
+                    "surface-container": "#ededf1",
+                    "surface-tint": "#0059c8",
+                    "surface-bright": "#f9f9fd",
+                    "commerce-cobalt-deep": "#0457CB",
+                    "secondary-fixed": "#e2e2e2",
+                    "on-primary-container": "#e6ebff",
+                    "primary-container": "#0064e0",
+                    "secondary-container": "#e2e2e2",
+                    "commerce-cobalt": "#0064E0",
+                    "on-secondary-container": "#646464",
+                    "tertiary-container": "#8f6100",
+                    "on-primary-fixed": "#001944",
+                    "surface-container-highest": "#e2e2e6",
+                    "hairline-soft": "#DEE3E9",
+                    "outline": "#727786",
+                    "on-tertiary-container": "#ffe8ca",
+                    "primary": "#004db0",
+                    "fb-blue": "#1876F2",
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#afc6ff",
+                    "error": "#ba1a1a",
+                    "critical-red": "#E41E3F",
+                    "on-primary-fixed-variant": "#004299",
+                    "on-surface-variant": "#424754",
+                    "on-secondary-fixed-variant": "#474747",
+                    "on-error-container": "#93000a",
+                    "surface-container-low": "#f3f3f7",
+                    "warning-yellow": "#F2A918",
+                    "on-tertiary-fixed-variant": "#614000",
+                    "surface-dim": "#d9dade",
+                    "on-tertiary-fixed": "#281800",
+                    "secondary": "#5e5e5e",
+                    "surface": "#f9f9fd",
+                    "inverse-on-surface": "#f0f0f4",
+                    "on-background": "#1a1c1f",
+                    "background": "#f9f9fd",
+                    "surface-variant": "#e2e2e6",
+                    "on-secondary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "primary-fixed": "#d9e2ff",
+                    "surface-container-high": "#e8e8ec",
+                    "tertiary": "#6f4b00",
+                    "steel-gray": "#5D6C7B"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "12px",
+                    "xxl": "24px",
+                    "xxxl": "32px",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xxxl": "40px",
+                    "xs": "8px",
+                    "section": "64px",
+                    "xxs": "4px",
+                    "xl": "24px",
+                    "base": "16px",
+                    "xxl": "32px",
+                    "lg": "20px",
+                    "sm": "10px",
+                    "md": "12px",
+                    "hero": "120px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Be Vietnam Pro"],
+                    "display-lg": ["Be Vietnam Pro"],
+                    "heading-lg": ["Be Vietnam Pro"],
+                    "heading-md": ["Be Vietnam Pro"],
+                    "subtitle-lg": ["Be Vietnam Pro"],
+                    "caption": ["Be Vietnam Pro"],
+                    "button-md": ["Be Vietnam Pro"],
+                    "hero-display": ["Be Vietnam Pro"],
+                    "heading-sm": ["Be Vietnam Pro"],
+                    "body-md-bold": ["Be Vietnam Pro"],
+                    "body-md": ["Be Vietnam Pro"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            font-size: 32px;
+        }
+        body { font-family: 'Be Vietnam Pro', sans-serif; }
+        .backdrop-blur-custom { backdrop-filter: blur(8px); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen relative overflow-hidden">
+<!-- Background Screen: MindState Dashboard -->
+<div class="fixed inset-0 z-0">
+<img alt="MindState Dashboard Background" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAxyvhGbaJUx80s_3mIMUKMrkZdU7Fa0hL-YJUq5ScIxyequj-Hh9TJSvK_vkCtMzTjJsaQCnbp_jzouxrnO8Q7rP4MRtlcjxnTmA4u3yHUHgA86b8myCRR6i3KFLGKEMV7Smm53Tdro43bfHELCKZ1V4d0cXNWmy1cM4tk2KseAJgZt0gM86zccl1MXo67uHI9v6qLMs7SA7aOq8lJXAXuZPpUwwj3qtku2YZJop8Hd6ajyU2yoEIbJQ">
+</div>
+<!-- Modal Overlay -->
+<div class="fixed inset-0 z-[100] flex items-center justify-center px-base bg-black/40 backdrop-blur-sm transition-opacity duration-300" id="modal-overlay">
+<!-- Behavioral Alert Card -->
+<div class="relative bg-surface-container-lowest w-full max-w-[340px] rounded-xxl border border-hairline-soft shadow-xl overflow-hidden transform transition-all duration-500 scale-100 opacity-100 p-xl flex flex-col items-center text-center">
+<!-- Top-aligned Pill Badge -->
+<div class="mb-lg">
+<span class="bg-warning-yellow text-on-tertiary px-base py-xxs rounded-full font-button-md text-caption uppercase tracking-wider">
+                    Attention Nudge
+                </span>
+</div>
+<!-- Icon -->
+<div class="mb-base text-commerce-cobalt">
+<span class="material-symbols-outlined" data-icon="self_improvement">self_improvement</span>
+</div>
+<!-- Header -->
+<h2 class="font-heading-sm text-heading-sm font-bold text-on-surface mb-xs leading-tight">
+                Late-Night Scrolling Detected
+            </h2>
+<!-- Body Text -->
+<p class="font-body-sm text-body-sm text-steel-gray mb-xxl px-xxs">
+                You’ve spent 40% more time on short-form videos after midnight this week. Taking a short break can help restore your attention span tomorrow.
+            </p>
+<!-- Dual Pill Buttons (CTAs) -->
+<div class="flex flex-col w-full gap-sm">
+<!-- Primary Button -->
+<button class="w-full h-[48px] bg-ink-button text-white rounded-full font-button-md text-button-md hover:opacity-90 active:scale-95 transition-all" id="close-modal">
+                    Got It
+                </button>
+<!-- Secondary Ghost Button -->
+<button class="w-full h-[48px] border-2 border-[#0A1317] text-[#0A1317] rounded-full font-button-md text-button-md hover:bg-surface-soft active:scale-95 transition-all">
+                    Set Reminder
+                </button>
+</div>
+</div>
+</div>
+<!-- Micro-interaction Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const overlay = document.getElementById('modal-overlay');
+            const closeBtn = document.getElementById('close-modal');
+
+            // Simple dismissal logic for the demo
+            closeBtn.addEventListener('click', () => {
+                overlay.style.opacity = '0';
+                overlay.style.pointerEvents = 'none';
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 300);
+            });
+
+            // Prevent scroll on body while modal is open
+            document.body.style.overflow = 'hidden';
+        });
+    </script>
+</body></html>

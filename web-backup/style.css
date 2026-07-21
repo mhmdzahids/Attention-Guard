@@ -1,0 +1,293 @@
+/* Custom CSS for Attention Guard App Mockup and UI Details */
+
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;700&display=swap');
+
+body {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    background: linear-gradient(135deg, #f5f7fb 0%, #e4e8f0 100%);
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Phone Mockup Frame */
+.phone-frame {
+    width: 390px;
+    height: 844px;
+    background: #000000;
+    border-radius: 50px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 
+                0 0 0 12px #1f1f1f, 
+                0 0 0 13px #2d2d2d;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Dynamic Island/Notch */
+.phone-notch {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 30px;
+    background: #000000;
+    border-radius: 20px;
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.phone-notch::before {
+    content: '';
+    width: 12px;
+    height: 12px;
+    background: #1a1a1a;
+    border-radius: 50%;
+    position: absolute;
+    right: 20px;
+}
+
+/* Phone Status Bar */
+.status-bar {
+    height: 48px;
+    padding: 0 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    font-size: 13px;
+    font-weight: 600;
+    color: #000000;
+    background-color: #ffffff;
+    z-index: 90;
+    user-select: none;
+}
+
+.status-bar-icons {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+/* App Viewport */
+.app-viewport {
+    flex: 1;
+    background-color: #ffffff;
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Custom Scrollbar for Viewport */
+.app-viewport::-webkit-scrollbar {
+    width: 4px;
+}
+
+.app-viewport::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.app-viewport::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+/* Screen Transitions */
+.app-screen {
+    position: absolute;
+    inset: 0;
+    padding-bottom: 96px; /* space for bottom nav */
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.98) translateY(5px);
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+    overflow-y: auto;
+}
+
+.app-screen.active {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1) translateY(0);
+    position: relative;
+}
+
+/* Gauge Animation */
+.gauge-ring {
+    transition: stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Pattern dot overlay for Insights */
+.pattern-overlay {
+    background-image: radial-gradient(#dee3e9 0.5px, transparent 0.5px);
+    background-size: 12px 12px;
+}
+
+/* Subtle line chart animations */
+.smooth-line {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: drawLine 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes drawLine {
+    to { stroke-dashoffset: 0; }
+}
+
+/* Toggle Switch Styling */
+.toggle-switch-btn {
+    position: relative;
+    display: inline-flex;
+    height: 24px;
+    width: 44px;
+    align-items: center;
+    border-radius: 9999px;
+    transition: background-color 0.2s;
+    outline: none;
+}
+
+.toggle-switch-btn.active {
+    background-color: #0064E0; /* Reserved for critical permissions settings / activation */
+}
+
+.toggle-switch-btn.inactive {
+    background-color: #ced0d4;
+}
+
+.toggle-switch-dot {
+    display: inline-block;
+    height: 16px;
+    width: 16px;
+    transform: translateX(4px);
+    border-radius: 9999px;
+    background-color: #ffffff;
+    transition: transform 0.2s;
+}
+
+.toggle-switch-btn.active .toggle-switch-dot {
+    transform: translateX(24px);
+}
+
+/* Modal Overlay animations */
+.modal-overlay {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.modal-container {
+    transform: scale(0.95) translateY(20px);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modal-overlay.active .modal-container {
+    transform: scale(1) translateY(0);
+}
+
+/* Meta's Core Palette Overrides & Helpers */
+.meta-canvas {
+    background-color: #ffffff !important;
+}
+
+.meta-hairline {
+    border: 1px solid #dee3e9 !important;
+}
+
+.rounded-xxxl {
+    border-radius: 32px !important;
+}
+
+.rounded-xl {
+    border-radius: 16px !important;
+}
+
+/* Primary buttons are 100px pill shapes (#000000) */
+.btn-primary {
+    background-color: #000000 !important;
+    color: #ffffff !important;
+    border-radius: 9999px !important;
+    height: 56px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    transition: opacity 0.2s, transform 0.1s;
+    user-select: none;
+}
+
+.btn-primary:active {
+    opacity: 0.85;
+    transform: scale(0.98);
+}
+
+/* Reserved Cobalt Blue for critical actions/permissions CTA */
+.btn-cobalt {
+    background-color: #0064E0 !important;
+    color: #ffffff !important;
+    border-radius: 9999px !important;
+    height: 56px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    transition: opacity 0.2s, transform 0.1s;
+    user-select: none;
+}
+
+.btn-cobalt:active {
+    opacity: 0.85;
+    transform: scale(0.98);
+}
+
+/* Ghost Buttons (outlined secondary) */
+.btn-secondary {
+    background-color: transparent !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
+    border-radius: 9999px !important;
+    height: 56px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-secondary:active {
+    background-color: #f1f4f7;
+    transform: scale(0.98);
+}
+
+/* Risk Badges */
+.badge-low {
+    background-color: #31A24C !important;
+    color: #ffffff !important;
+}
+
+.badge-moderate {
+    background-color: #F2A918 !important;
+    color: #ffffff !important;
+}
+
+.badge-high {
+    background-color: #E41E3F !important;
+    color: #ffffff !important;
+}

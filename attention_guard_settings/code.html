@@ -1,0 +1,356 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Settings | MindState</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface-variant": "#424754",
+                    "tertiary-container": "#8f6100",
+                    "inverse-primary": "#afc6ff",
+                    "surface-container-high": "#e8e8ec",
+                    "surface-container": "#ededf1",
+                    "on-tertiary-fixed": "#281800",
+                    "ink-button": "#000000",
+                    "on-error": "#ffffff",
+                    "surface-dim": "#d9dade",
+                    "tertiary-fixed-dim": "#ffba42",
+                    "on-secondary-fixed-variant": "#474747",
+                    "error-container": "#ffdad6",
+                    "on-surface": "#1a1c1f",
+                    "primary-fixed": "#d9e2ff",
+                    "commerce-cobalt": "#0064E0",
+                    "on-primary": "#ffffff",
+                    "promo-gold": "#F7B928",
+                    "warning-yellow": "#F2A918",
+                    "tertiary": "#6f4b00",
+                    "critical-red": "#E41E3F",
+                    "on-secondary": "#ffffff",
+                    "outline-variant": "#c2c6d6",
+                    "tertiary-fixed": "#ffddaf",
+                    "on-primary-fixed-variant": "#004299",
+                    "primary-fixed-dim": "#afc6ff",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-bright": "#f9f9fd",
+                    "surface-container-low": "#f3f3f7",
+                    "outline": "#727786",
+                    "hairline-soft": "#DEE3E9",
+                    "surface-variant": "#e2e2e6",
+                    "inverse-surface": "#2f3034",
+                    "secondary-fixed-dim": "#c6c6c6",
+                    "hairline": "#CED0D4",
+                    "on-error-container": "#93000a",
+                    "secondary-container": "#e2e2e2",
+                    "background": "#f9f9fd",
+                    "surface-soft": "#F1F4F7",
+                    "on-tertiary-fixed-variant": "#614000",
+                    "on-secondary-container": "#646464",
+                    "on-secondary-fixed": "#1b1b1b",
+                    "fb-blue": "#1876F2",
+                    "commerce-cobalt-deep": "#0457CB",
+                    "error": "#ba1a1a",
+                    "on-background": "#1a1c1f",
+                    "on-tertiary-container": "#ffe8ca",
+                    "on-primary-fixed": "#001944",
+                    "surface-tint": "#0059c8",
+                    "secondary-fixed": "#e2e2e2",
+                    "secondary": "#5e5e5e",
+                    "primary": "#004db0",
+                    "surface-container-highest": "#e2e2e6",
+                    "on-tertiary": "#ffffff",
+                    "surface": "#f9f9fd",
+                    "on-primary-container": "#e6ebff",
+                    "inverse-on-surface": "#f0f0f4",
+                    "primary-container": "#0064e0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xxxl": "40px",
+                    "xs": "8px",
+                    "hero": "120px",
+                    "xl": "24px",
+                    "section": "64px",
+                    "lg": "20px",
+                    "sm": "10px",
+                    "base": "16px",
+                    "xxs": "4px",
+                    "xxl": "32px",
+                    "md": "12px"
+            },
+            "fontFamily": {
+                    "heading-md": ["Be Vietnam Pro"],
+                    "body-md-bold": ["Be Vietnam Pro"],
+                    "button-md": ["Be Vietnam Pro"],
+                    "heading-sm": ["Be Vietnam Pro"],
+                    "display-lg": ["Be Vietnam Pro"],
+                    "caption": ["Be Vietnam Pro"],
+                    "subtitle-lg": ["Be Vietnam Pro"],
+                    "body-sm": ["Be Vietnam Pro"],
+                    "hero-display": ["Be Vietnam Pro"],
+                    "body-md": ["Be Vietnam Pro"],
+                    "heading-lg": ["Be Vietnam Pro"]
+            },
+            "fontSize": {
+                    "heading-md": ["28px", {"lineHeight": "1.21", "letterSpacing": "0px", "fontWeight": "300"}],
+                    "body-md-bold": ["16px", {"lineHeight": "1.50", "letterSpacing": "-0.16px", "fontWeight": "700"}],
+                    "button-md": ["14px", {"lineHeight": "1.43", "letterSpacing": "-0.14px", "fontWeight": "700"}],
+                    "heading-sm": ["24px", {"lineHeight": "1.25", "letterSpacing": "0px", "fontWeight": "500"}],
+                    "display-lg": ["48px", {"lineHeight": "1.17", "letterSpacing": "0px", "fontWeight": "500"}],
+                    "caption": ["12px", {"lineHeight": "1.33", "letterSpacing": "0px", "fontWeight": "400"}],
+                    "subtitle-lg": ["18px", {"lineHeight": "1.44", "letterSpacing": "0px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "1.43", "letterSpacing": "-0.14px", "fontWeight": "400"}],
+                    "hero-display": ["64px", {"lineHeight": "1.16", "letterSpacing": "0px", "fontWeight": "500"}],
+                    "body-md": ["16px", {"lineHeight": "1.50", "letterSpacing": "-0.16px", "fontWeight": "400"}],
+                    "heading-lg": ["36px", {"lineHeight": "1.28", "letterSpacing": "0px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: #f9f9fd;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .toggle-switch {
+            @apply relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none;
+        }
+        .toggle-active {
+            @apply bg-commerce-cobalt;
+        }
+        .toggle-inactive {
+            @apply bg-outline-variant;
+        }
+        .toggle-dot {
+            @apply inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ease-in-out;
+        }
+        .active-dot {
+            @apply translate-x-6;
+        }
+        .inactive-dot {
+            @apply translate-x-1;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #CED0D4;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="text-on-surface min-h-screen pb-xxxl">
+<!-- Top Navigation Anchor (Shared Component Mapping) -->
+<header class="w-full sticky top-0 z-50 bg-background dark:bg-background">
+<div class="flex justify-between items-center px-base py-sm w-full max-w-7xl mx-auto">
+<div class="flex items-center gap-base">
+<button class="hover:opacity-80 transition-opacity active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-on-surface">menu</span>
+</button>
+<h1 class="font-heading-sm text-heading-sm font-bold text-on-surface">Settings</h1>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-container-high overflow-hidden border border-hairline-soft">
+<img class="w-full h-full object-cover" data-alt="A professional high-resolution studio headshot of a diverse user in their early 30s with a neutral, calm expression. The lighting is soft and cinematic against a clean, minimalist off-white studio background, perfectly aligning with a high-end modern tech aesthetic. The overall mood is intelligent, accessible, and sophisticated." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcQ8nejg6BNjOvS1Xeizx3VeP_ZdyNgJa9stDFCSpJM9EsZUAYdrSlL037oDLE_oDcFkHP9hNveCdELDiKWXE0YlZWvCikoVn9PHPgzj-rxDivFbKalEKjx3CczRf-1LkdxmUMOvTY0FVAvy00W9_i2JMYD4uGCuBBOCc53jEetCLQXcNYm0tg27Z2YvhipdOAueZ8IJAzL9IpBemgcoWUDHWJHYL7FqLdGV3QLCKPpKXYazAV78j6Cw">
+</div>
+</div>
+</header>
+<main class="max-w-xl mx-auto px-base py-xl space-y-xl">
+<!-- Group 1: Data & Privacy -->
+<section>
+<div class="flex items-center gap-xs mb-md px-xxs">
+<div class="w-8 h-8 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt">
+<span class="material-symbols-outlined text-[20px]">security</span>
+</div>
+<h2 class="font-subtitle-lg text-subtitle-lg">Data &amp; Privacy</h2>
+</div>
+<div class="bg-surface-container-lowest border border-hairline-soft rounded-xl overflow-hidden">
+<!-- Row 1: Local Storage Toggle -->
+<div class="flex items-center justify-between p-base border-b border-hairline-soft">
+<div class="flex flex-col">
+<span class="font-body-md-bold text-body-md-bold">Local-Only Storage</span>
+<span class="font-caption text-caption text-secondary">Keep all behavioral data on device.</span>
+</div>
+<button class="toggle-switch toggle-active" onclick="toggleSwitch(this)">
+<span class="toggle-dot active-dot"></span>
+</button>
+</div>
+<!-- Row 2: Export Data -->
+<button class="w-full flex items-center justify-between p-base border-b border-hairline-soft hover:bg-surface-soft transition-colors text-left">
+<div class="flex flex-col">
+<span class="font-body-md-bold text-body-md-bold">Export Interaction Data</span>
+<span class="font-caption text-caption text-secondary">Download your raw attention logs.</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</button>
+<!-- Row 3: Delete Logs -->
+<button class="w-full flex items-center p-base hover:bg-error-container/10 transition-colors text-left group">
+<div class="flex flex-col">
+<span class="font-body-md-bold text-body-md-bold text-critical-red">Delete All Local Logs</span>
+<span class="font-caption text-caption text-critical-red opacity-80">This action cannot be undone.</span>
+</div>
+</button>
+</div>
+</section>
+<!-- Group 2: Passive Monitoring -->
+<section>
+<div class="flex items-center gap-xs mb-md px-xxs">
+<div class="w-8 h-8 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</div>
+<h2 class="font-subtitle-lg text-subtitle-lg">Passive Monitoring</h2>
+</div>
+<div class="bg-surface-container-lowest border border-hairline-soft rounded-xl overflow-hidden divide-y divide-hairline-soft">
+<!-- Monitor Row 1 -->
+<div class="flex items-center justify-between p-base">
+<span class="font-body-md text-body-md">Session Dynamics</span>
+<button class="toggle-switch toggle-active" onclick="toggleSwitch(this)">
+<span class="toggle-dot active-dot"></span>
+</button>
+</div>
+<!-- Monitor Row 2 -->
+<div class="flex items-center justify-between p-base">
+<span class="font-body-md text-body-md">Micro-Behaviors</span>
+<button class="toggle-switch toggle-active" onclick="toggleSwitch(this)">
+<span class="toggle-dot active-dot"></span>
+</button>
+</div>
+<!-- Monitor Row 3 -->
+<div class="flex items-center justify-between p-base">
+<span class="font-body-md text-body-md">Task-Switching</span>
+<button class="toggle-switch toggle-inactive" onclick="toggleSwitch(this)">
+<span class="toggle-dot inactive-dot"></span>
+</button>
+</div>
+<!-- Monitor Row 4 -->
+<div class="flex items-center justify-between p-base">
+<span class="font-body-md text-body-md">Temporal Distribution</span>
+<button class="toggle-switch toggle-active" onclick="toggleSwitch(this)">
+<span class="toggle-dot active-dot"></span>
+</button>
+</div>
+</div>
+</section>
+<!-- Group 3: Alert Preferences -->
+<section>
+<div class="flex items-center gap-xs mb-md px-xxs">
+<div class="w-8 h-8 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt">
+<span class="material-symbols-outlined text-[20px]">notifications_active</span>
+</div>
+<h2 class="font-subtitle-lg text-subtitle-lg">Alert Preferences</h2>
+</div>
+<div class="bg-surface-container-lowest border border-hairline-soft rounded-xl overflow-hidden">
+<div class="p-base space-y-md">
+<div>
+<label class="font-caption text-caption text-secondary uppercase tracking-wider mb-xs block">Nudge Frequency</label>
+<div class="flex p-xxs bg-surface-container-low rounded-full border border-hairline-soft">
+<button class="pill-btn flex-1 py-xs px-base rounded-full font-button-md text-button-md transition-all bg-white shadow-sm text-commerce-cobalt" onclick="setActivePill(this)">Minimal</button>
+<button class="pill-btn flex-1 py-xs px-base rounded-full font-button-md text-button-md transition-all text-secondary" onclick="setActivePill(this)">Balanced</button>
+<button class="pill-btn flex-1 py-xs px-base rounded-full font-button-md text-button-md transition-all text-secondary" onclick="setActivePill(this)">Active</button>
+</div>
+</div>
+<div class="flex items-center justify-between pt-sm">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md">Quiet Hours</span>
+<span class="font-caption text-caption text-secondary">Auto-suppress alerts from 10 PM.</span>
+</div>
+<button class="toggle-switch toggle-active" onclick="toggleSwitch(this)">
+<span class="toggle-dot active-dot"></span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Group 4: Research & Model -->
+<section>
+<div class="flex items-center gap-xs mb-md px-xxs">
+<div class="w-8 h-8 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt">
+<span class="material-symbols-outlined text-[20px]">science</span>
+</div>
+<h2 class="font-subtitle-lg text-subtitle-lg">Research &amp; Model</h2>
+</div>
+<div class="bg-surface-container-lowest border border-hairline-soft rounded-xl overflow-hidden">
+<button class="w-full flex items-center justify-between p-base hover:bg-surface-soft transition-colors text-left">
+<div class="flex flex-col">
+<span class="font-body-md-bold text-body-md-bold">How API Score Works</span>
+<p class="font-caption text-caption text-secondary mt-xxs max-w-[90%]">Based on proprietary CNN-LSTM (Convolutional Neural Network - Long Short-Term Memory) architectures for robust sequence analysis.</p>
+</div>
+<span class="material-symbols-outlined text-outline">info</span>
+</button>
+</div>
+</section>
+<!-- Footer -->
+<footer class="pt-section text-center">
+<p class="font-caption text-caption text-secondary">
+                Attention Guard v1.0 • Privacy-Preserving AI Model
+            </p>
+</footer>
+</main>
+<!-- Bottom Navigation Bar (Shared Component Mapping) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-base pb-base pt-xs bg-surface-container-lowest dark:bg-inverse-surface shadow-lg dark:shadow-none border-t border-hairline-soft dark:border-outline-variant">
+<!-- Today Tab -->
+<div class="flex flex-col items-center justify-center text-secondary dark:text-on-secondary-container opacity-60 hover:bg-surface-soft dark:hover:bg-surface-variant transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-caption text-caption">Today</span>
+</div>
+<!-- Insights Tab -->
+<div class="flex flex-col items-center justify-center text-secondary dark:text-on-secondary-container opacity-60 hover:bg-surface-soft dark:hover:bg-surface-variant transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-caption text-caption">Insights</span>
+</div>
+<!-- Meditate Tab -->
+<div class="flex flex-col items-center justify-center text-secondary dark:text-on-secondary-container opacity-60 hover:bg-surface-soft dark:hover:bg-surface-variant transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined">self_improvement</span>
+<span class="font-caption text-caption">Meditate</span>
+</div>
+<!-- Profile/Settings Tab (ACTIVE) -->
+<div class="flex flex-col items-center justify-center bg-surface-container dark:bg-secondary-container text-commerce-cobalt dark:text-on-secondary-container rounded-full px-lg py-xs scale-95 transition-all duration-200 cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-caption text-caption">Profile</span>
+</div>
+</nav>
+<script>
+        function toggleSwitch(btn) {
+            const dot = btn.querySelector('.toggle-dot');
+            if (btn.classList.contains('toggle-active')) {
+                btn.classList.remove('toggle-active');
+                btn.classList.add('toggle-inactive');
+                dot.classList.remove('active-dot');
+                dot.classList.add('inactive-dot');
+            } else {
+                btn.classList.remove('toggle-inactive');
+                btn.classList.add('toggle-active');
+                dot.classList.remove('inactive-dot');
+                dot.classList.add('active-dot');
+            }
+        }
+
+        function setActivePill(btn) {
+            const container = btn.closest('.flex');
+            container.querySelectorAll('.pill-btn').forEach(b => {
+                b.classList.remove('bg-white', 'shadow-sm', 'text-commerce-cobalt');
+                b.classList.add('text-secondary');
+            });
+            btn.classList.add('bg-white', 'shadow-sm', 'text-commerce-cobalt');
+            btn.classList.remove('text-secondary');
+        }
+    </script>
+</body></html>

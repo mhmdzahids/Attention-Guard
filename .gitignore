@@ -1,0 +1,37 @@
+# ==========================================
+# Java / Android Memory Dumps (CRITICAL FIX)
+# ==========================================
+*.hprof
+*.hprof.*
+java_pid*
+
+# ==========================================
+# Android & Gradle Build Artifacts
+# ==========================================
+.gradle/
+build/
+app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.dex
+
+# ==========================================
+# Local Configuration & IDE Files
+# ==========================================
+local.properties
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+*.log
+
+# ==========================================
+# Web / Node / Stitch Artifacts (If any)
+# ==========================================
+node_modules/
+.npm
+dist/
+.cache/

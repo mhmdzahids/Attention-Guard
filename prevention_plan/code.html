@@ -1,0 +1,295 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Prevention Plan | Wellness Assistant</title>
+<!-- Google Fonts: Be Vietnam Pro for the "Optimistic" humanist look -->
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Shared Style Logic -->
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            background-color: #FFFFFF;
+        }
+        .pill-shadow {
+            box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.05);
+        }
+        /* Fade-in for cards */
+        .card-entry {
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed-variant": "#474747",
+                      "critical-red": "#E41E3F",
+                      "surface-tint": "#0059c8",
+                      "on-error": "#ffffff",
+                      "primary-container": "#0064e0",
+                      "surface-variant": "#e2e2e6",
+                      "surface-container": "#ededf1",
+                      "on-primary-container": "#e6ebff",
+                      "surface-container-high": "#e8e8ec",
+                      "promo-gold": "#F7B928",
+                      "tertiary-container": "#8f6100",
+                      "on-primary-fixed-variant": "#004299",
+                      "outline-variant": "#c2c6d6",
+                      "tertiary": "#6f4b00",
+                      "on-surface": "#1a1c1f",
+                      "hairline-soft": "#DEE3E9",
+                      "surface": "#f9f9fd",
+                      "on-tertiary-fixed": "#281800",
+                      "secondary-container": "#e2e2e2",
+                      "background": "#f9f9fd",
+                      "tertiary-fixed": "#ffddaf",
+                      "inverse-on-surface": "#f0f0f4",
+                      "on-primary": "#ffffff",
+                      "primary-fixed-dim": "#afc6ff",
+                      "on-background": "#1a1c1f",
+                      "inverse-primary": "#afc6ff",
+                      "secondary-fixed": "#e2e2e2",
+                      "surface-container-lowest": "#ffffff",
+                      "tertiary-fixed-dim": "#ffba42",
+                      "on-error-container": "#93000a",
+                      "secondary-fixed-dim": "#c6c6c6",
+                      "commerce-cobalt-deep": "#0457CB",
+                      "fb-blue": "#1876F2",
+                      "inverse-surface": "#2f3034",
+                      "on-surface-variant": "#424754",
+                      "surface-bright": "#f9f9fd",
+                      "primary": "#004db0",
+                      "on-tertiary-container": "#ffe8ca",
+                      "commerce-cobalt": "#0064E0",
+                      "on-secondary": "#ffffff",
+                      "hairline": "#CED0D4",
+                      "surface-soft": "#F1F4F7",
+                      "on-primary-fixed": "#001944",
+                      "ink-button": "#000000",
+                      "surface-container-low": "#f3f3f7",
+                      "surface-container-highest": "#e2e2e6",
+                      "warning-yellow": "#F2A918",
+                      "secondary": "#5e5e5e",
+                      "primary-fixed": "#d9e2ff",
+                      "outline": "#727786",
+                      "error-container": "#ffdad6",
+                      "on-tertiary-fixed-variant": "#614000",
+                      "on-secondary-container": "#646464",
+                      "on-tertiary": "#ffffff",
+                      "surface-dim": "#d9dade",
+                      "on-secondary-fixed": "#1b1b1b",
+                      "error": "#ba1a1a",
+                      "stone-muted": "#8595A4"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "xxs": "4px",
+                      "lg": "20px",
+                      "md": "12px",
+                      "xxl": "32px",
+                      "base": "16px",
+                      "hero": "120px",
+                      "xxxl": "40px",
+                      "xs": "8px",
+                      "sm": "10px",
+                      "section": "64px",
+                      "xl": "24px"
+              },
+              "fontFamily": {
+                      "display-lg": ["Be Vietnam Pro"],
+                      "subtitle-lg": ["Be Vietnam Pro"],
+                      "body-md-bold": ["Be Vietnam Pro"],
+                      "button-md": ["Be Vietnam Pro"],
+                      "hero-display": ["Be Vietnam Pro"],
+                      "body-md": ["Be Vietnam Pro"],
+                      "heading-lg": ["Be Vietnam Pro"],
+                      "caption": ["Be Vietnam Pro"],
+                      "heading-md": ["Be Vietnam Pro"],
+                      "heading-sm": ["Be Vietnam Pro"],
+                      "body-sm": ["Be Vietnam Pro"]
+              },
+              "fontSize": {
+                      "display-lg": ["48px", {"lineHeight": "1.17", "letterSpacing": "0px", "fontWeight": "500"}],
+                      "subtitle-lg": ["18px", {"lineHeight": "1.44", "letterSpacing": "0px", "fontWeight": "700"}],
+                      "body-md-bold": ["16px", {"lineHeight": "1.50", "letterSpacing": "-0.16px", "fontWeight": "700"}],
+                      "button-md": ["14px", {"lineHeight": "1.43", "letterSpacing": "-0.14px", "fontWeight": "700"}],
+                      "hero-display": ["64px", {"lineHeight": "1.16", "letterSpacing": "0px", "fontWeight": "500"}],
+                      "body-md": ["16px", {"lineHeight": "1.50", "letterSpacing": "-0.16px", "fontWeight": "400"}],
+                      "heading-lg": ["36px", {"lineHeight": "1.28", "letterSpacing": "0px", "fontWeight": "500"}],
+                      "caption": ["12px", {"lineHeight": "1.33", "letterSpacing": "0px", "fontWeight": "400"}],
+                      "heading-md": ["28px", {"lineHeight": "1.21", "letterSpacing": "0px", "fontWeight": "300"}],
+                      "heading-sm": ["24px", {"lineHeight": "1.25", "letterSpacing": "0px", "fontWeight": "500"}],
+                      "body-sm": ["14px", {"lineHeight": "1.43", "letterSpacing": "-0.14px", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-container-lowest text-on-surface antialiased min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 z-50 bg-surface dark:bg-surface-dim border-b border-hairline-soft dark:border-outline-variant flex justify-between items-center w-full px-base py-md sticky">
+<div class="flex items-center gap-base">
+<button class="text-primary dark:text-primary-fixed-dim hover:bg-surface-container dark:hover:bg-surface-variant p-xxs rounded-full transition-opacity active:opacity-80">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-heading-sm text-heading-sm font-bold text-commerce-cobalt dark:text-primary-fixed-dim">Wellness Assistant</h1>
+</div>
+<button class="text-on-surface-variant dark:text-outline hover:bg-surface-container dark:hover:bg-surface-variant p-xxs rounded-full transition-opacity active:opacity-80">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</header>
+<!-- Content Canvas -->
+<main class="flex-1 w-full max-w-4xl mx-auto flex flex-col pb-section">
+<!-- High Priority Status Banner -->
+<div class="bg-critical-red px-xl py-md flex items-center justify-between text-white animate-pulse-slow">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+<span class="font-body-md-bold tracking-tight">High Attention Risk (API: 0.78)</span>
+</div>
+<span class="material-symbols-outlined text-[20px]">info</span>
+</div>
+<div class="px-xl pt-xxl">
+<!-- Hero Title -->
+<h2 class="font-heading-lg text-heading-lg text-on-surface mb-xs">Let's Reset Your Focus</h2>
+<p class="font-body-md text-on-surface-variant mb-xxl max-w-lg">Based on your recent app usage patterns, we've designed a specialized circuit-breaker plan to help you regain control.</p>
+<!-- Recommendations List: Bento-ish Feature Cards -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-base">
+<!-- Recommendation 1 -->
+<div class="card-entry bg-white p-xl rounded-xl border border-hairline-soft flex flex-col gap-md transition-all hover:border-commerce-cobalt group animate-slideUp" style="animation-delay: 0.1s;">
+<div class="w-10 h-10 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt group-hover:bg-primary-container group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">timer</span>
+</div>
+<div>
+<h3 class="font-subtitle-lg text-subtitle-lg text-on-surface mb-xxs">Enable Micro-Breaks</h3>
+<p class="font-body-sm text-on-surface-variant">Automatically trigger gentle reminders every 20 minutes of scrolling.</p>
+</div>
+</div>
+<!-- Recommendation 2 -->
+<div class="card-entry bg-white p-xl rounded-xl border border-hairline-soft flex flex-col gap-md transition-all hover:border-commerce-cobalt group animate-slideUp" style="animation-delay: 0.2s;">
+<div class="w-10 h-10 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt group-hover:bg-primary-container group-hover:text-white transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bedtime</span>
+</div>
+<div>
+<h3 class="font-subtitle-lg text-subtitle-lg text-on-surface mb-xxs">Nighttime Lockout</h3>
+<p class="font-body-sm text-on-surface-variant">Recommendations to restrict app launches post-midnight to protect sleep hygiene.</p>
+</div>
+</div>
+<!-- Recommendation 3 -->
+<div class="card-entry bg-white p-xl rounded-xl border border-hairline-soft flex flex-col gap-md transition-all hover:border-commerce-cobalt group md:col-span-2 lg:col-span-1 animate-slideUp" style="animation-delay: 0.3s;"><div class="w-10 h-10 rounded-full bg-surface-soft flex items-center justify-center text-commerce-cobalt group-hover:bg-primary-container group-hover:text-white transition-colors">
+<span class="material-symbols-outlined">extension</span>
+</div>
+<div>
+<h3 class="font-subtitle-lg text-subtitle-lg text-on-surface mb-xxs">Focus Mini-Games</h3>
+<p class="font-body-sm text-on-surface-variant">Sharpen your mind with quick cognitive games once your scrolling timer expires to help regain concentration.</p>
+</div></div>
+</div>
+<!-- Visualization Section -->
+<div class="mt-section bg-surface-soft p-xxl rounded-xxxl flex flex-col md:flex-row items-center gap-xl relative overflow-hidden">
+<!-- Atmospheric visual element -->
+<div class="flex-1 z-10">
+
+<p class="font-body-md text-on-surface-variant mb-xl">Implementing this plan is predicted to increase your focus window by 42% over the next 7 days.</p>
+<div class="flex gap-md">
+<div class="flex items-center gap-xxs">
+<div class="w-3 h-3 rounded-full bg-commerce-cobalt"></div>
+<span class="font-caption text-caption">Planned Growth</span>
+</div>
+<div class="flex items-center gap-xxs">
+<div class="w-3 h-3 rounded-full bg-hairline"></div>
+<span class="font-caption text-caption">Current Trend</span>
+</div>
+</div>
+</div>
+<div class="flex-1 w-full h-48 bg-white/50 backdrop-blur-md rounded-xl border border-white/20 p-md relative overflow-hidden z-10 flex items-center justify-center">
+<img class="w-full h-full object-contain mix-blend-multiply opacity-80" data-alt="A clean, minimalist data visualization chart with soft, flowing curves and blue gradients against a stark white background. The style is modern, technical, and high-fidelity, following the Optimistic Commerce aesthetic with clean lines and airy composition. Tonal layering creates a sense of professional depth without heavy shadows." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCmj6iGPe6EqbjKE-81fNCQsOrkpxM-x2DfJB05ZQw1kYi2-myYN-yt1CYRUmVe6UvdsIGwuXQj1U-gekEUOOPiXKxv7B-BpeuhihGDtQ66FIh95Mdyf3KADCB4cHa7R6dWIaIGuY0uf46Tt78EUBSuluuSMBi29BRo-Gz1VG0wYKMgrynaD0KbYnUuqLabpCNXM6UViLOYfeZJ-dR9fPaBsvbB5PqNQWXhje4yGhpdZj7-rm_wWTrXww">
+</div>
+</div>
+<!-- Primary Action -->
+<div class="mt-section flex flex-col items-center gap-lg">
+<button class="bg-commerce-cobalt text-white rounded-full font-button-md text-button-md px-[30px] py-md pill-shadow hover:scale-105 active:scale-95 transition-all duration-200">
+                    Activate Prevention Plan
+                </button>
+<p class="font-caption text-caption text-stone-muted text-center max-w-sm">
+                    This is an AI-assisted self-awareness tool, not a clinical diagnosis.
+                </p>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-base pb-base pt-xs bg-surface-container-lowest shadow-lg border-t border-hairline-soft">
+<!-- Today -->
+<button class="flex flex-col items-center justify-center text-secondary opacity-60 hover:bg-surface-soft transition-all duration-200 active:scale-95">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="font-caption text-caption mt-xxs">Today</span>
+</button>
+<!-- Insights -->
+<button class="flex flex-col items-center justify-center text-secondary opacity-60 hover:bg-surface-soft transition-all duration-200 active:scale-95">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-caption text-caption mt-xxs">Insights</span>
+</button>
+<!-- Meditate (Active) -->
+<button class="flex flex-col items-center justify-center bg-surface-container text-commerce-cobalt rounded-full px-lg py-xs transition-all duration-200 active:scale-95">
+<span class="material-symbols-outlined" data-weight="fill">self_improvement</span>
+<span class="font-caption text-caption mt-xxs">Meditate</span>
+</button>
+<!-- Profile -->
+<button class="flex flex-col items-center justify-center text-secondary opacity-60 hover:bg-surface-soft transition-all duration-200 active:scale-95">
+<span class="material-symbols-outlined">person</span>
+<span class="font-caption text-caption mt-xxs">Profile</span>
+</button>
+</nav>
+<script>
+        // Micro-interactions for button activity
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                el.classList.add('opacity-80');
+            });
+            el.addEventListener('mouseup', () => {
+                el.classList.remove('opacity-80');
+            });
+        });
+
+        // Simple observer to trigger card entrance if they weren't already visible
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('animate-slideUp');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.card-entry').forEach(card => observer.observe(card));
+    </script>
+
+
+
+
+
+
+</body></html>
