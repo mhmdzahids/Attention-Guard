@@ -27,6 +27,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class MainActivity : ComponentActivity() {
 
@@ -145,12 +149,13 @@ fun MainAppScaffold() {
 
     // Connect trigger updates from service callback
     LaunchedEffect(Unit) {
-        AttentionMonitoringService.onMetricsUpdated = { session, scroll, switches, night, score, risk ->
+        AttentionMonitoringService.onMetricsUpdated = { session, scroll, switches, night, skip, score, risk ->
             if (!AttentionMonitoringService.useSimulatedData) {
                 sessionDuration = session
                 scrollVelocity = scroll
                 switchFreq = switches
                 nightRatio = night
+                skipFrequency = skip
                 apiScore = score
                 riskTier = risk
                 
@@ -180,6 +185,7 @@ fun MainAppScaffold() {
             scrollVelocity = AttentionMonitoringService.currentScroll
             switchFreq = AttentionMonitoringService.currentSwitches
             nightRatio = AttentionMonitoringService.currentNight
+            skipFrequency = AttentionMonitoringService.currentSkip
             apiScore = AttentionMonitoringService.apiScore
             riskTier = AttentionMonitoringService.riskTier
             
@@ -207,7 +213,8 @@ fun MainAppScaffold() {
             session = sessionDuration,
             scroll = scrollVelocity,
             switches = switchFreq,
-            night = nightRatio
+            night = nightRatio,
+            skip = skipFrequency
         )
         apiScore = AttentionMonitoringService.apiScore
         riskTier = AttentionMonitoringService.riskTier
@@ -219,6 +226,46 @@ fun MainAppScaffold() {
         isYoutubeInstalled = true
         isInstagramInstalled = true
         isTiktokInstalled = true
+    }
+
+    val onSeedTestData: () -> Unit = {
+        val database = AppDatabase.getDatabase(context)
+        // Using main scope or lifecycleScope if accessible
+        (context as? ComponentActivity)?.lifecycleScope?.launch(Dispatchers.IO) {
+            val todayStart = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
+            database.attentionLogDao().deleteLogsAfter(todayStart)
+
+            val cal = Calendar.getInstance()
+            val hours = listOf(0, 3, 6, 9, 12, 15, 18, 21)
+            val randomScores = listOf(0.12f, 0.35f, 0.22f, 0.68f, 0.45f, 0.78f, 0.55f, 0.32f)
+            val randomSessions = listOf(0.5f, 1.2f, 0.8f, 3.2f, 2.1f, 4.5f, 3.0f, 1.5f)
+
+            val currentHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+            for (i in hours.indices) {
+                if (hours[i] <= currentHour) {
+                    cal.set(Calendar.HOUR_OF_DAY, hours[i])
+                    cal.set(Calendar.MINUTE, 0)
+                    cal.set(Calendar.SECOND, 0)
+                    cal.set(Calendar.MILLISECOND, 0)
+                    
+                    val log = com.attentionguard.data.AttentionLog(
+                        timestamp = cal.timeInMillis,
+                        sessionDuration = randomSessions[i],
+                        scrollVelocity = 150f,
+                        taskSwitches = 5f,
+                        nightRatio = 0.1f,
+                        apiScore = randomScores[i],
+                        riskTier = if (randomScores[i] < 0.35f) "low" else if (randomScores[i] < 0.65f) "moderate" else "high"
+                    )
+                    database.attentionLogDao().insertLog(log)
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -281,6 +328,7 @@ fun MainAppScaffold() {
                     isInstagramInstalled = isInstagramInstalled,
                     isTiktokInstalled = isTiktokInstalled,
                     dbLogs = dbLogs,
+                    useSimulatedData = useSimulatedData,
                     onNavigateToMeditate = { activeTab = "meditate" }
                 )
                 "alerts" -> AlertsScreen(alerts = alertsList)
@@ -309,7 +357,8 @@ fun MainAppScaffold() {
                                 results.session,
                                 results.scroll,
                                 results.switches,
-                                results.night
+                                results.night,
+                                results.skip
                             )
                         }
                     },
@@ -326,7 +375,8 @@ fun MainAppScaffold() {
                     foregroundLatency = foregroundLatency,
                     onLatencyChanged = { foregroundLatency = it; onSignalChanged() },
                     nightRatio = nightRatio,
-                    onNightChanged = { nightRatio = it; onSignalChanged() }
+                    onNightChanged = { nightRatio = it; onSignalChanged() },
+                    onSeedTestData = onSeedTestData
                 )
             }
 

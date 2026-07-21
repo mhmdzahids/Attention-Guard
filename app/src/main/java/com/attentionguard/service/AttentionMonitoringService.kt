@@ -64,12 +64,18 @@ class AttentionMonitoringService : Service() {
     private fun querySystemMetrics() {
         val results = queryMetricsDirectly(this)
         
+        // Update the app-specific durations in companion
+        youtubeDuration = results.youtube
+        instagramDuration = results.instagram
+        tiktokDuration = results.tiktok
+
         // Feed metrics to calculate API
         updateCalculations(
             session = Math.min(8.0f, results.session),
             scroll = results.scroll,
             switches = Math.min(20.0f, results.switches),
-            night = Math.min(1.0f, results.night)
+            night = Math.min(1.0f, results.night),
+            skip = results.skip
         )
     }
 
@@ -105,6 +111,7 @@ class AttentionMonitoringService : Service() {
         var currentScroll = 142f
         var currentSwitches = 8.2f
         var currentNight = 0.12f
+        var currentSkip = 64f
 
         // App-specific exposure durations (in hours)
         var youtubeDuration = 1.0f
@@ -120,7 +127,7 @@ class AttentionMonitoringService : Service() {
         var onTriggerAlert: ((risk: String, score: Float) -> Unit)? = null
 
         // Callback when any metric or score is updated
-        var onMetricsUpdated: ((session: Float, scroll: Float, switches: Float, night: Float, score: Float, risk: String) -> Unit)? = null
+        var onMetricsUpdated: ((session: Float, scroll: Float, switches: Float, night: Float, skip: Float, score: Float, risk: String) -> Unit)? = null
 
         // Data holder for direct query output
         data class MetricResults(
@@ -130,7 +137,8 @@ class AttentionMonitoringService : Service() {
             val night: Float,
             val youtube: Float,
             val instagram: Float,
-            val tiktok: Float
+            val tiktok: Float,
+            val skip: Float
         )
 
         val TARGET_PACKAGES = setOf(
@@ -169,7 +177,7 @@ class AttentionMonitoringService : Service() {
         fun queryMetricsDirectly(context: Context): MetricResults {
             checkInstallationStatus(context)
             val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
-                ?: return MetricResults(1.5f, 142f, 8.2f, 0.12f, 0.6f, 0.5f, 0.4f)
+                ?: return MetricResults(1.5f, 142f, 8.2f, 0.12f, 0.6f, 0.5f, 0.4f, 64f)
             
             val calendar = Calendar.getInstance()
             val endTime = calendar.timeInMillis
@@ -254,15 +262,17 @@ class AttentionMonitoringService : Service() {
                 night = nightRatioVal,
                 youtube = youtubeHours,
                 instagram = instagramHours,
-                tiktok = tiktokHours
+                tiktok = tiktokHours,
+                skip = AttentionAccessibilityService.getSkipRate()
             )
         }
 
-        fun updateCalculations(session: Float, scroll: Float, switches: Float, night: Float) {
+        fun updateCalculations(session: Float, scroll: Float, switches: Float, night: Float, skip: Float) {
             currentSession = session
             currentScroll = scroll
             currentSwitches = switches
             currentNight = night
+            currentSkip = skip
 
             // For simulated mode, distribute session harian dynamically
             if (useSimulatedData) {
@@ -288,7 +298,7 @@ class AttentionMonitoringService : Service() {
                 else -> "high"
             }
 
-            onMetricsUpdated?.invoke(session, scroll, switches, night, apiScore, riskTier)
+            onMetricsUpdated?.invoke(session, scroll, switches, night, skip, apiScore, riskTier)
 
             if (riskTier != prevRisk) {
                 onTriggerAlert?.invoke(riskTier, apiScore)

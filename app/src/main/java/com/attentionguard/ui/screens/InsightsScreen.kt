@@ -2,6 +2,8 @@ package com.attentionguard.ui.screens
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.attentionguard.ui.theme.*
+import kotlinx.coroutines.launch
 
 data class ChartPoint(val label: String, val value: Float)
 
@@ -42,12 +45,27 @@ fun InsightsScreen(
     isInstagramInstalled: Boolean,
     isTiktokInstalled: Boolean,
     dbLogs: List<com.attentionguard.data.AttentionLog>,
+    useSimulatedData: Boolean,
     onNavigateToMeditate: () -> Unit
 ) {
     val scrollState = rememberScrollState()
     
     // Active chart type state
     var chartType by remember { mutableStateOf("hourly") }
+    var currentRenderType by remember { mutableStateOf("hourly") }
+    val chartProgress = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Smoothly rise chart on first load
+    LaunchedEffect(Unit) {
+        chartProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = 500,
+                easing = FastOutSlowInEasing
+            )
+        )
+    }
     
     // 1. Prepare Hourly Data (Hour of Day)
     val todayStart = remember {
@@ -129,6 +147,11 @@ fun InsightsScreen(
         fullDayNames[c.get(java.util.Calendar.DAY_OF_WEEK) - 1]
     }
 
+    // Diagnostic logs for developers
+    android.util.Log.d("AttentionGuardChart", "ChartType: $chartType | DB Logs: ${dbLogs.size} entries | Today's Logs: ${todayLogs.size} entries")
+    android.util.Log.d("AttentionGuardChart", "Hourly Points: $hourlyPoints")
+    android.util.Log.d("AttentionGuardChart", "Weekly Points: ${weeklyPoints.map { "${it.label}=${it.value}" }}")
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -167,14 +190,14 @@ fun InsightsScreen(
                     ) {
                         Column {
                             Text(
-                                text = if (chartType == "hourly") "PEAK ACTIVITY" else "MOST ACTIVE DAY",
+                                text = if (currentRenderType == "hourly") "PEAK ACTIVITY" else "MOST ACTIVE DAY",
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = SecondaryGray,
                                 letterSpacing = 1.sp
                             )
                             Text(
-                                text = if (chartType == "hourly") peakHourText else peakDayText,
+                                text = if (currentRenderType == "hourly") peakHourText else peakDayText,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = OnSurfaceDark,
@@ -198,7 +221,31 @@ fun InsightsScreen(
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(100.dp))
                                         .background(if (selected) activeTabColor else inactiveTabColor)
-                                        .clickable { chartType = type }
+                                        .clickable {
+                                            if (chartType != type) {
+                                                coroutineScope.launch {
+                                                    // 1. Smoothly shrink current chart down
+                                                    chartProgress.animateTo(
+                                                        targetValue = 0f,
+                                                        animationSpec = tween(
+                                                            durationMillis = 250,
+                                                            easing = FastOutSlowInEasing
+                                                        )
+                                                    )
+                                                    // 2. Swap render types at flat level
+                                                    chartType = type
+                                                    currentRenderType = type
+                                                    // 3. Smoothly rise new chart up
+                                                    chartProgress.animateTo(
+                                                        targetValue = 1f,
+                                                        animationSpec = tween(
+                                                            durationMillis = 350,
+                                                            easing = FastOutSlowInEasing
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        }
                                         .padding(horizontal = 12.dp, vertical = 6.dp)
                                 ) {
                                     Text(
@@ -243,9 +290,9 @@ fun InsightsScreen(
                                 else -> RiskHigh
                             }
 
-                            if (chartType == "hourly") {
+                            if (currentRenderType == "hourly") {
                                 val points = hourlyPoints.mapIndexed { index, valRaw ->
-                                    Offset(index * w / 8f, h - (valRaw * h))
+                                    Offset(index * w / 8f, h - (valRaw * h * chartProgress.value))
                                 }
                                 
                                 val path = Path().apply {
@@ -274,21 +321,21 @@ fun InsightsScreen(
                                 drawPath(
                                     path = areaPath,
                                     brush = Brush.verticalGradient(
-                                        colors = listOf(themeColor.copy(alpha = 0.25f), Color.Transparent)
+                                        colors = listOf(themeColor.copy(alpha = 0.25f * chartProgress.value), Color.Transparent)
                                     )
                                 )
 
                                 val highlightX = peakIndex * w / 8f
-                                val highlightY = h - (hourlyPoints[peakIndex] * h)
+                                val highlightY = h - (hourlyPoints[peakIndex] * h * chartProgress.value)
                                 drawCircle(
                                     color = themeColor,
-                                    radius = 15f,
+                                    radius = 15f * chartProgress.value,
                                     center = Offset(highlightX, highlightY),
-                                    style = Stroke(width = 4f)
+                                    style = Stroke(width = 4f * chartProgress.value)
                                 )
                                 drawCircle(
                                     color = themeColor,
-                                    radius = 6f,
+                                    radius = 6f * chartProgress.value,
                                     center = Offset(highlightX, highlightY)
                                 )
                             } else {
@@ -300,7 +347,7 @@ fun InsightsScreen(
                                 for (i in 0 until numBars) {
                                     val x = i * (barWidth + spacing)
                                     val barVal = weeklyPoints[i].value
-                                    val barH = Math.max(12f, (barVal / maxVal) * h)
+                                    val barH = Math.max(12f, (barVal / maxVal) * h) * chartProgress.value
                                     val y = h - barH
                                     
                                     val barColor = if (barVal >= 5.0f) RiskHigh else if (barVal >= 2.8f) RiskModerate else CommerceCobalt
@@ -318,9 +365,9 @@ fun InsightsScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = if (chartType == "hourly") Arrangement.SpaceBetween else Arrangement.SpaceAround
+                        horizontalArrangement = if (currentRenderType == "hourly") Arrangement.SpaceBetween else Arrangement.SpaceAround
                     ) {
-                        if (chartType == "hourly") {
+                        if (currentRenderType == "hourly") {
                             listOf("12 AM", "6 AM", "12 PM", "6 PM", "12 AM").forEach { time ->
                                 Text(
                                     text = time,
@@ -338,6 +385,38 @@ fun InsightsScreen(
                                     color = SecondaryGray
                                 )
                             }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(100.dp),
+                            color = SurfaceSoft,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = if (useSimulatedData) {
+                                    "Source: Simulated Data Mode"
+                                } else {
+                                    if (currentRenderType == "hourly") {
+                                        if (todayLogs.isEmpty()) "Source: Circadian Baseline (No logs)" 
+                                        else "Source: Real-world Database (${todayLogs.size} logs today)"
+                                    } else {
+                                        val dbLogsInWeek = dbLogs.filter { it.timestamp >= System.currentTimeMillis() - 7 * 86400000L }
+                                        if (dbLogsInWeek.isEmpty()) "Source: Estimated Weekly Baseline"
+                                        else "Source: Real-world Database (${dbLogsInWeek.size} logs this week)"
+                                    }
+                                },
+                                color = SecondaryGray,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }

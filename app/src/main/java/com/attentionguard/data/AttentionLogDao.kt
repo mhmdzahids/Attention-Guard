@@ -16,4 +16,7 @@ interface AttentionLogDao {
 
     @Query("SELECT * FROM attention_logs ORDER BY timestamp DESC")
     suspend fun getAllLogs(): List<AttentionLog>
+
+    @Query("DELETE FROM attention_logs WHERE timestamp >= :timestamp")
+    suspend fun deleteLogsAfter(timestamp: Long)
 }

@@ -10,6 +10,16 @@ class AttentionAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
         
+        val pkgName = event.packageName?.toString() ?: return
+        val isTargetApp = pkgName == "com.google.android.youtube" ||
+                          pkgName == "com.instagram.android" ||
+                          pkgName == "com.zhiliaoapp.musically" ||
+                          pkgName == "com.ss.android.ugc.trill" ||
+                          pkgName == "com.ss.android.ugc.aweme" ||
+                          pkgName == "com.ss.android.ugc.aweme.lite"
+                          
+        if (!isTargetApp) return
+        
         when (event.eventType) {
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
                 val scrollY = event.scrollY
@@ -47,26 +57,18 @@ class AttentionAccessibilityService : AccessibilityService() {
         private var lastScrollY = -1
         private var lastScrollX = -1
         private var currentVelocity = 0f
+        private var averageVelocity = 142f // default baseline
+        private var velocityMeasurementsCount = 0
         
         private var scrollCount = 0
         private var skipCount = 0
 
         fun getScrollVelocity(): Float {
-            val elapsed = System.currentTimeMillis() - lastScrollTime
-            if (elapsed > 10000) {
-                currentVelocity = 0f
-                scrollCount = 0
-            }
-            return if (currentVelocity > 0f) currentVelocity else 142f // 142f is baseline
+            return averageVelocity
         }
 
         fun getSkipRate(): Float {
-            val elapsed = System.currentTimeMillis() - lastScrollTime
-            if (elapsed > 10000) {
-                skipCount = 0
-                scrollCount = 0
-            }
-            return if (scrollCount > 0) (skipCount.toFloat() / scrollCount.toFloat()) * 100f else 64f
+            return if (scrollCount > 0) (skipCount.toFloat() / scrollCount.toFloat()) * 100f else 0f
         }
 
         private fun trackScroll(y: Int, x: Int, time: Long, deltaY: Int, deltaX: Int) {
@@ -94,9 +96,17 @@ class AttentionAccessibilityService : AccessibilityService() {
                 val velocityPxPerSec = (distance / (timeDeltaMs / 1000f))
                 // Apply a simple low-pass filter (exponential moving average) to smooth the velocity
                 currentVelocity = if (currentVelocity == 0.0f) velocityPxPerSec else (0.7f * currentVelocity + 0.3f * velocityPxPerSec)
+                
+                // Track cumulative average velocity for stability
+                velocityMeasurementsCount++
+                averageVelocity = if (velocityMeasurementsCount == 1) {
+                    currentVelocity
+                } else {
+                    (averageVelocity * 0.95f) + (currentVelocity * 0.05f)
+                }
             } else {
-                // If there's a long gap, reset velocity
-                currentVelocity = 100f // default baseline for active scroll
+                // If there's a long gap, reset current velocity but keep average stable
+                currentVelocity = 100f
             }
             
             scrollCount++

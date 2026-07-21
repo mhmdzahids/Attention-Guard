@@ -39,7 +39,8 @@ fun SettingsScreen(
     foregroundLatency: Float,
     onLatencyChanged: (Float) -> Unit,
     nightRatio: Float,
-    onNightChanged: (Float) -> Unit
+    onNightChanged: (Float) -> Unit,
+    onSeedTestData: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -225,6 +226,52 @@ fun SettingsScreen(
                         checked = monitorSwitch,
                         onCheckedChange = { monitorSwitch = it }
                     )
+                }
+            }
+        }
+
+        // Section C: Diagnostics & Testing
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            HeaderSection(title = "Diagnostics & Testing", icon = Icons.Default.Person)
+            
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, HairlineSoft),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Seed Database with Test Data",
+                        fontWeight = FontWeight.Bold,
+                        color = OnSurfaceDark,
+                        fontSize = 14.sp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Text(
+                        text = "Generate 8 hourly database logs with random API scores for today. This helps verify that the line chart is reading, aggregating, and drawing custom database records correctly.",
+                        color = SecondaryGray,
+                        fontSize = 12.sp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Button(
+                        onClick = onSeedTestData,
+                        colors = ButtonDefaults.buttonColors(containerColor = CommerceCobalt),
+                        shape = RoundedCornerShape(100.dp),
+                        modifier = Modifier.fillMaxWidth().height(44.dp)
+                    ) {
+                        Text(
+                            text = "Seed 8 Hourly Logs",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
         }
