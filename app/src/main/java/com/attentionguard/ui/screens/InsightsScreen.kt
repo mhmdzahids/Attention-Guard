@@ -475,9 +475,15 @@ fun InsightsScreen(
                         }
 
                         val sessionRatio = sessionDuration / 8f
+                        var barProgress by remember { mutableStateOf(0f) }
+                        
+                        LaunchedEffect(sessionDuration) {
+                            barProgress = sessionRatio
+                        }
+                        
                         val animWidth by animateFloatAsState(
-                            targetValue = sessionRatio,
-                            animationSpec = tween(1200)
+                            targetValue = barProgress,
+                            animationSpec = tween(1000, easing = FastOutSlowInEasing)
                         )
                         
                         // Custom Linear Progress bar with dynamic color
@@ -904,9 +910,15 @@ private fun AppUsageBar(
     icon: @Composable () -> Unit
 ) {
     val ratio = if (maxDuration > 0f) Math.min(1.0f, Math.max(0.0f, duration / maxDuration)) else 0f
+    var barProgress by remember { mutableStateOf(0f) }
+    
+    LaunchedEffect(duration) {
+        barProgress = ratio
+    }
+    
     val animWidth by animateFloatAsState(
-        targetValue = ratio,
-        animationSpec = tween(1200)
+        targetValue = barProgress,
+        animationSpec = tween(1000, easing = FastOutSlowInEasing)
     )
 
     Row(

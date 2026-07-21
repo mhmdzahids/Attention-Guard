@@ -31,6 +31,15 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 
 class MainActivity : ComponentActivity() {
 
@@ -270,31 +279,59 @@ fun MainAppScaffold() {
 
     Scaffold(
         bottomBar = {
-            NavigationBar(
-                containerColor = Color.White,
-                tonalElevation = 8.dp
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(82.dp)
+                    .background(Color.White)
+                    .drawBehind {
+                        drawLine(
+                            color = com.attentionguard.ui.theme.HairlineSoft,
+                            start = Offset(0f, 0f),
+                            end = Offset(size.width, 0f),
+                            strokeWidth = 2f
+                        )
+                    }
+                    .padding(bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 val tabs = listOf(
                     TabItem("today", "Today", Icons.Default.CalendarToday),
-                    TabItem("insights", "Insights", Icons.Default.Analytics),
-                    TabItem("alerts", "Alerts", Icons.Default.NotificationsActive),
+                    TabItem("insights", "Insights", Icons.Default.BarChart),
+                    TabItem("alerts", "Alerts", Icons.Default.Notifications),
                     TabItem("meditate", "Meditate", Icons.Default.SelfImprovement),
                     TabItem("settings", "Profile", Icons.Default.Person)
                 )
+
                 tabs.forEach { tab ->
-                    NavigationBarItem(
-                        selected = activeTab == tab.id,
-                        onClick = { activeTab = tab.id },
-                        label = { Text(tab.label) },
-                        icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color(0xFF0064E0),
-                            selectedTextColor = Color(0xFF0064E0),
-                            unselectedIconColor = Color(0xFF5E5E5E),
-                            unselectedTextColor = Color(0xFF5E5E5E),
-                            indicatorColor = Color(0xFFF1F4F7)
-                        )
-                    )
+                    val selected = activeTab == tab.id
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(100.dp))
+                            .background(if (selected) com.attentionguard.ui.theme.SurfaceSoft else Color.Transparent)
+                            .clickable { activeTab = tab.id }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = tab.icon,
+                                contentDescription = tab.label,
+                                tint = if (selected) com.attentionguard.ui.theme.CommerceCobalt else com.attentionguard.ui.theme.SecondaryGray,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Text(
+                                text = tab.label,
+                                fontSize = 12.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (selected) com.attentionguard.ui.theme.CommerceCobalt else com.attentionguard.ui.theme.SecondaryGray
+                            )
+                        }
+                    }
                 }
             }
         }

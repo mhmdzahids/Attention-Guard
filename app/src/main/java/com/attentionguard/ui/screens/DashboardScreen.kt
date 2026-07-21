@@ -14,7 +14,10 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -36,6 +39,20 @@ fun DashboardScreen(
     nightRatio: Float
 ) {
     val scrollState = rememberScrollState()
+
+    var gaugeProgress by remember { mutableStateOf(0f) }
+
+    LaunchedEffect(apiScore) {
+        gaugeProgress = apiScore
+    }
+
+    val animatedScore by animateFloatAsState(
+        targetValue = gaugeProgress,
+        animationSpec = tween(
+            durationMillis = 1000,
+            easing = FastOutSlowInEasing
+        )
+    )
 
     Column(
         modifier = Modifier
@@ -102,15 +119,15 @@ fun DashboardScreen(
                         drawArc(
                             color = strokeColor,
                             startAngle = -90f,
-                            sweepAngle = apiScore * 360f,
+                            sweepAngle = animatedScore * 360f,
                             useCenter = false,
                             style = Stroke(width = strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round)
                         )
                     }
-
+ 
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = String.format("%.2f", apiScore),
+                            text = String.format("%.2f", animatedScore),
                             fontSize = 44.sp,
                             fontWeight = FontWeight.Bold,
                             color = OnSurfaceDark
