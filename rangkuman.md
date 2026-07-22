@@ -141,6 +141,30 @@ Hari ini telah diselesaikan serangkaian optimalisasi kode dan perbaikan bug arsi
     *   **Peremajaan todayStart & Logs**: Mengubah cache `todayStart` dan `todayLogs` di [InsightsScreen.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/ui/screens/InsightsScreen.kt) agar dihitung ulang setiap detik (berbasis `liveTimeMs`) dan mengembalikan nilai fallback `0f` ketika data hari ini masih kosong.
     *   **Viewport Grafik Dinamis**: Mengubah batas minimal sumbu X grafik `chartStart` menjadi `todayStart` dan merubah rumusan koordinat Canvas agar memetakan titik data hari ini dari tepi kiri ($X = 0$). Grafik otomatis bersih dan mulai dari tepi kiri di pukul 00:00.
 
+#### 🕒 Pukul 00:35 - 00:38 WIB | Implementasi Navigasi Swipe Kanan dan Kiri (HorizontalPager)
+*   **Masalah**: Tab halaman di Scaffold sebelumnya bersifat statis (berganti langsung saat ikon bawah diklik saja) dan belum mendukung gestur swipe (geser) kanan-kiri.
+*   **Perbaikan**:
+    *   Mengintegrasikan `HorizontalPager` dari Jetpack Compose Foundation ke dalam kontainer utama [MainActivity.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/MainActivity.kt).
+    *   Memindahkan list penampung `tabs` ke level teratas fungsi `MainAppScaffold` agar dapat dibagikan (shared).
+    *   Membuat dua `LaunchedEffect` sinkronisasi timbal balik: jika user menggeser halaman, item navigasi bawah akan terpilih otomatis; jika user mengeklik tombol bawah (atau dipicu event perpindahan), halaman akan bergeser mulus (`animateScrollToPage`).
+    *   Pager secara natural membatasi pergeseran di halaman ujung (tidak bisa digeser lebih lanjut bila berada di tab Today paling kiri atau tab Profile paling kanan).
+
+#### 🕒 Pukul 00:43 - 00:44 WIB | Perbaikan Pager Macet Saat Perpindahan Banyak Tab (Today -> Alerts)
+*   **Masalah**: Perpindahan tab non-adjacent (tidak bertetangga, misal dari Today langsung ke Alerts) menyebabkan `HorizontalPager` macet/berhenti di tab perantara (Insights). Ini karena race condition antara data `currentPage` selama animasi berjalan dengan trigger `LaunchedEffect`.
+*   **Perbaikan**:
+    *   Mengubah trigger LaunchedEffect di [MainActivity.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/MainActivity.kt) dari `pagerState.currentPage` menjadi `pagerState.settledPage`. `activeTab` baru akan diupdate HANYA SETELAH animasi geser selesai sepenuhnya.
+    *   Menambahkan `val coroutineScope = rememberCoroutineScope()` dan memodifikasi aksi klik menu bawah agar langsung memanggil `coroutineScope.launch { pagerState.animateScrollToPage(pageIndex) }` secara mandiri.
+    *   Menghapus pertentangan logika sehingga perpindahan tab melintasi banyak halaman berjalan mulus 100% tanpa macet.
+
+#### 🕒 Pukul 00:49 - 00:50 WIB | Polish UI/UX (Kelancaran Geser & Respon Sorotan Bottom Bar Instan)
+*   **Masalah**:
+    1.  *Kasarnya Transisi Geser*: Perpindahan halaman menggunakan swipe gestur terkadang terasa kasar/tersendat jika diusap cepat.
+    2.  *Delay Sorotan Navigasi*: Klik tombol bawah memiliki delay visual sebelum tab tujuan disorot (selected).
+*   **Perbaikan**:
+    *   **Custom Fling Behavior**: Menambahkan konfigurasi `flingBehavior` kustom berbasis `PagerDefaults.flingBehavior` dengan `snapAnimationSpec` bertipe `tween(400, FastOutSlowInEasing)` pada `HorizontalPager` untuk menjamin animasi gesek yang halus.
+    *   **Instant Feedback Bottom Bar**: Mengubah listener klik di menu bawah agar seketika mengupdate `activeTab = tab.id`. Sorotan ikon langsung menyala instan tanpa menunggu pager selesai beranimasi.
+    *   **Proteksi Target Programmatic**: Menyematkan `programmaticTargetPage` untuk mengawal LaunchedEffect `currentPage` agar tidak bentrok dengan animasi transisi yang sedang berjalan melintasi banyak tab, mengamankan sinkronisasi halaman secara sempurna.
+
 ---
 
 ## 3. Hal-hal yang Dapat Disempurnakan di Masa Mendatang (Future Improvements)

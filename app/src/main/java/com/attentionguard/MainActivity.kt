@@ -34,6 +34,11 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.clickable
@@ -91,10 +96,47 @@ data class AlertLog(
     val riskTier: String
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun MainAppScaffold() {
+    val tabs = listOf(
+        TabItem("today", "Today", Icons.Default.CalendarToday),
+        TabItem("insights", "Insights", Icons.Default.BarChart),
+        TabItem("alerts", "Alerts", Icons.Default.Notifications),
+        TabItem("meditate", "Meditate", Icons.Default.SelfImprovement),
+        TabItem("settings", "Profile", Icons.Default.Person)
+    )
     var activeTab by remember { mutableStateOf("today") }
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 5 })
+    val coroutineScope = rememberCoroutineScope()
+    var programmaticTargetPage by remember { mutableStateOf<Int?>(null) }
+    
+    val customFlingBehavior = PagerDefaults.flingBehavior(
+        state = pagerState,
+        snapAnimationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
+    )
+    
+    // Synchronize pager state change to activeTab (observing currentPage with programmatic target guard)
+    LaunchedEffect(pagerState.currentPage) {
+        val target = programmaticTargetPage
+        if (target == null || pagerState.currentPage == target) {
+            val tabId = tabs[pagerState.currentPage].id
+            if (activeTab != tabId) {
+                activeTab = tabId
+            }
+        }
+    }
+
+    // Synchronize activeTab change to pager state
+    LaunchedEffect(activeTab) {
+        val pageIndex = tabs.indexOfFirst { it.id == activeTab }
+        if (pageIndex != -1 && pagerState.currentPage != pageIndex) {
+            programmaticTargetPage = pageIndex
+            pagerState.animateScrollToPage(pageIndex)
+            programmaticTargetPage = null
+        }
+    }
+
     val context = LocalContext.current
     val database = remember { AppDatabase.getDatabase(context) }
     val dbLogs by database.attentionLogDao().getAllLogsFlow().collectAsState(initial = emptyList())
@@ -425,13 +467,7 @@ fun MainAppScaffold() {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    val tabs = listOf(
-                        TabItem("today", "Today", Icons.Default.CalendarToday),
-                        TabItem("insights", "Insights", Icons.Default.BarChart),
-                        TabItem("alerts", "Alerts", Icons.Default.Notifications),
-                        TabItem("meditate", "Meditate", Icons.Default.SelfImprovement),
-                        TabItem("settings", "Profile", Icons.Default.Person)
-                    )
+
 
                     tabs.forEach { tab ->
                         val selected = activeTab == tab.id
@@ -439,7 +475,9 @@ fun MainAppScaffold() {
                             modifier = Modifier
                                 .clip(RoundedCornerShape(100.dp))
                                 .background(if (selected) com.attentionguard.ui.theme.SurfaceSoft else Color.Transparent)
-                                .clickable { activeTab = tab.id }
+                                .clickable {
+                                    activeTab = tab.id
+                                }
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                             contentAlignment = Alignment.Center
                         ) {
@@ -465,13 +503,15 @@ fun MainAppScaffold() {
                 }
             }
         ) { paddingValues ->
-            Box(
+            HorizontalPager(
+                state = pagerState,
+                flingBehavior = customFlingBehavior,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-            ) {
-                when (activeTab) {
-                    "today" -> DashboardScreen(
+            ) { page ->
+                when (page) {
+                    0 -> DashboardScreen(
                         apiScore = apiScore,
                         riskTier = riskTier,
                         sessionDuration = sessionDuration,
@@ -479,7 +519,7 @@ fun MainAppScaffold() {
                         switchFreq = switchFreq,
                         nightRatio = nightRatio
                     )
-                    "insights" -> InsightsScreen(
+                    1 -> InsightsScreen(
                         apiScore = apiScore,
                         riskTier = riskTier,
                         sessionDuration = sessionDuration,
@@ -497,13 +537,13 @@ fun MainAppScaffold() {
                         useSimulatedData = useSimulatedData,
                         onNavigateToMeditate = { activeTab = "meditate" }
                     )
-                    "alerts" -> AlertsScreen(alerts = alertsList)
-                    "meditate" -> MeditateScreen(
+                    2 -> AlertsScreen(alerts = alertsList)
+                    3 -> MeditateScreen(
                         apiScore = apiScore,
                         riskTier = riskTier,
                         onActivatePlan = { /* Action callback */ }
                     )
-                    "settings" -> SettingsScreen(
+                    4 -> SettingsScreen(
                         useSimulatedData = useSimulatedData,
                         onSimulatedDataToggled = {
                             AttentionMonitoringService.useSimulatedData = it
@@ -546,6 +586,7 @@ fun MainAppScaffold() {
                         onSeedTestData = onSeedTestData
                     )
                 }
+                }
 
                 // Moderate Risk Dialog Popup
                 if (showNudgeModal) {
@@ -569,7 +610,6 @@ fun MainAppScaffold() {
             }
         }
     }
-}
 
 data class TabItem(val id: String, val label: String, val icon: ImageVector)
 
