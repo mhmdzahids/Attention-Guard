@@ -202,6 +202,7 @@ class AttentionMonitoringService : Service() {
                 val events = usageStatsManager.queryEvents(startTime, endTime)
                 val event = UsageEvents.Event()
                 val appOpenTimes = mutableMapOf<String, Long>()
+                var lastResumedPackage: String? = null
                 
                 while (events.hasNextEvent()) {
                     events.getNextEvent(event)
@@ -210,6 +211,7 @@ class AttentionMonitoringService : Service() {
                     
                     if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
                         appOpenTimes[pkg] = time
+                        lastResumedPackage = pkg
                     } else if (event.eventType == UsageEvents.Event.ACTIVITY_PAUSED || 
                                event.eventType == UsageEvents.Event.ACTIVITY_STOPPED) {
                         val openTime = appOpenTimes.remove(pkg)
@@ -233,12 +235,18 @@ class AttentionMonitoringService : Service() {
                                 }
                             }
                         }
+                        if (pkg == lastResumedPackage) {
+                            lastResumedPackage = null
+                        }
+                    } else if (event.eventType == UsageEvents.Event.SCREEN_NON_INTERACTIVE || 
+                               event.eventType == UsageEvents.Event.KEYGUARD_SHOWN) {
+                        lastResumedPackage = null
                     }
                 }
                 
-                // Account for any app still running in foreground
+                // Account for any app still running in foreground (only if it is currently interactive)
                 for ((pkg, openTime) in appOpenTimes) {
-                    if (endTime > openTime) {
+                    if (pkg == lastResumedPackage && endTime > openTime) {
                         val duration = endTime - openTime
                         when (pkg) {
                             "com.google.android.youtube" -> youtubeMs += duration

@@ -100,7 +100,12 @@ fun InsightsScreen(
 
     val activeScrollVelocity = remember(todayLogs, scrollVelocity, useSimulatedData) {
         if (!useSimulatedData && todayLogs.isNotEmpty()) {
-            todayLogs.map { it.scrollVelocity }.average().toFloat()
+            val validLogs = todayLogs.filter { it.scrollVelocity in 0f..1000f }
+            if (validLogs.isNotEmpty()) {
+                validLogs.map { it.scrollVelocity }.average().toFloat()
+            } else {
+                scrollVelocity
+            }
         } else {
             scrollVelocity
         }
