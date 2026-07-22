@@ -84,43 +84,127 @@ fun InsightsScreen(
     val todayLogs = remember(dbLogs) {
         dbLogs.filter { it.timestamp >= todayStart }
     }
+
+    // Single source of truth calculation: derive active state values directly from Room DB if not in simulated mode
+    val latestLog = remember(todayLogs) {
+        todayLogs.maxByOrNull { it.timestamp }
+    }
+
+    val activeSessionDuration = remember(todayLogs, sessionDuration, useSimulatedData) {
+        if (!useSimulatedData && todayLogs.isNotEmpty()) {
+            todayLogs.map { it.sessionDuration }.average().toFloat()
+        } else {
+            sessionDuration
+        }
+    }
+
+    val activeScrollVelocity = remember(todayLogs, scrollVelocity, useSimulatedData) {
+        if (!useSimulatedData && todayLogs.isNotEmpty()) {
+            todayLogs.map { it.scrollVelocity }.average().toFloat()
+        } else {
+            scrollVelocity
+        }
+    }
+
+    val activeSwitchFreq = remember(todayLogs, switchFreq, useSimulatedData) {
+        if (!useSimulatedData && todayLogs.isNotEmpty()) {
+            todayLogs.map { it.taskSwitches }.average().toFloat()
+        } else {
+            switchFreq
+        }
+    }
+
+    val activeNightRatio = remember(todayLogs, nightRatio, useSimulatedData) {
+        if (!useSimulatedData && todayLogs.isNotEmpty()) {
+            todayLogs.map { it.nightRatio }.average().toFloat()
+        } else {
+            nightRatio
+        }
+    }
+
+    val activeApiScore = remember(todayLogs, apiScore, useSimulatedData) {
+        if (!useSimulatedData && todayLogs.isNotEmpty()) {
+            latestLog?.apiScore ?: apiScore
+        } else {
+            apiScore
+        }
+    }
+
+    val activeRiskTier = remember(activeApiScore, riskTier, useSimulatedData) {
+        if (!useSimulatedData && todayLogs.isNotEmpty()) {
+            when {
+                activeApiScore < 0.35f -> "low"
+                activeApiScore < 0.65f -> "moderate"
+                else -> "high"
+            }
+        } else {
+            riskTier
+        }
+    }
+
+    val activeYoutubeDuration = remember(youtubeDuration) {
+        youtubeDuration
+    }
+
+    val activeInstagramDuration = remember(instagramDuration) {
+        instagramDuration
+    }
+
+    val activeTiktokDuration = remember(tiktokDuration) {
+        tiktokDuration
+    }
+
+    val activeSkipFrequency = remember(skipFrequency) {
+        skipFrequency
+    }
     
     val hourlyBaseline = listOf(0.45f, 0.25f, 0.15f, 0.45f, 0.58f, 0.42f, 0.65f, 0.52f, 0.45f)
-    val hoursList = listOf(0, 3, 6, 9, 12, 15, 18, 21, 24)
-    val scaleFactor = if (apiScore > 0f) apiScore / 0.52f else 1f
+    val scaleFactor = if (activeApiScore > 0f) activeApiScore / 0.52f else 1f
     
+    // Group logs by exact hour of day (0..24), smooth out baseline fallback via linear interpolation (lerp)
     val hourlyPoints = remember(todayLogs, scaleFactor) {
-        hoursList.mapIndexed { index, hour ->
-            val start = todayStart + ((hour - 1.5) * 3600000).toLong()
-            val end = todayStart + ((hour + 1.5) * 3600000).toLong()
-            val logsInInterval = todayLogs.filter { it.timestamp in start..end }
-            
-            if (logsInInterval.isNotEmpty()) {
-                logsInInterval.map { it.apiScore }.average().toFloat()
+        (0..24).map { hour ->
+            val logsInHour = todayLogs.filter {
+                val cal = java.util.Calendar.getInstance().apply { timeInMillis = it.timestamp }
+                cal.get(java.util.Calendar.HOUR_OF_DAY) == hour
+            }
+            if (logsInHour.isNotEmpty()) {
+                logsInHour.map { it.apiScore }.average().toFloat()
             } else {
-                Math.min(1.0f, hourlyBaseline[index] * scaleFactor)
+                val lowIndex = hour / 3
+                val highIndex = Math.min(8, lowIndex + 1)
+                val fraction = (hour % 3) / 3f
+                val interpolatedBaseline = hourlyBaseline[lowIndex] * (1f - fraction) + hourlyBaseline[highIndex] * fraction
+                Math.min(1.0f, interpolatedBaseline * scaleFactor)
             }
         }
     }
 
     val currentHour = remember { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
     val visibleHoursCount = remember(currentHour) {
-        Math.max(1, hoursList.filter { it <= currentHour }.size)
+        currentHour + 1
     }
     
     val peakIndex = remember(hourlyPoints, visibleHoursCount) {
         hourlyPoints.take(visibleHoursCount).indices.maxByOrNull { hourlyPoints[it] } ?: 0
     }
-    val peakHoursList = listOf("12:00 AM", "03:00 AM", "06:00 AM", "09:00 AM", "12:00 PM", "03:00 PM", "06:00 PM", "09:00 PM", "12:00 AM")
-    val peakHourText = peakHoursList[peakIndex]
+    val peakHourText = remember(peakIndex) {
+        val amPm = if (peakIndex >= 12 && peakIndex < 24) "PM" else "AM"
+        val displayHour = when {
+            peakIndex == 0 || peakIndex == 24 -> 12
+            peakIndex > 12 -> peakIndex - 12
+            else -> peakIndex
+        }
+        String.format("%02d:00 %s", displayHour, amPm)
+    }
 
     // 2. Prepare Weekly Data (Day by Day)
     val dayNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
     val fullDayNames = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
     
-    val weeklyBaselines = listOf(2.4f, 3.1f, 1.8f, 2.9f, 4.2f, 3.5f, sessionDuration)
+    val weeklyBaselines = listOf(2.4f, 3.1f, 1.8f, 2.9f, 4.2f, 3.5f, activeSessionDuration)
     
-    val weeklyPoints = remember(dbLogs, sessionDuration) {
+    val weeklyPoints = remember(dbLogs, activeSessionDuration) {
         (0..6).map { i ->
             val c = java.util.Calendar.getInstance()
             c.add(java.util.Calendar.DAY_OF_YEAR, -i)
@@ -349,7 +433,7 @@ fun InsightsScreen(
                                             pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
                                         )
 
-                                        val themeColor = when (riskTier) {
+                                        val themeColor = when (activeRiskTier) {
                                             "low" -> RiskLow
                                             "moderate" -> RiskModerate
                                             else -> RiskHigh
@@ -454,26 +538,23 @@ fun InsightsScreen(
                                     if (currentRenderType == "hourly") {
                                         val formatHourLabel: (Int) -> String = { hourVal ->
                                             when {
-                                                hourVal == 0 -> "12 AM"
+                                                hourVal == 0 || hourVal == 24 -> "12 AM"
                                                 hourVal == 12 -> "12 PM"
-                                                hourVal == 24 -> "12 AM"
                                                 hourVal > 12 -> "${hourVal - 12} PM"
                                                 else -> "$hourVal AM"
                                             }
                                         }
-                                        val visibleHours = hoursList.take(visibleHoursCount)
+
+                                        // Step size of 3 hours for zoomed, 6 hours for unzoomed view
+                                        val labelStep = if (chartScale > 1.5f) 3 else 6
+                                        val labelList = mutableListOf<Pair<Int, String>>()
                                         
-                                        // Zoomed: show all visible indices. Unzoomed: show even indices and the last index.
-                                        val labelList = if (chartScale > 1.5f) {
-                                            visibleHours.mapIndexed { index, hour -> index to formatHourLabel(hour) }
-                                        } else {
-                                            visibleHours.mapIndexedNotNull { index, hour ->
-                                                if (index % 2 == 0 || index == visibleHoursCount - 1) {
-                                                    index to formatHourLabel(hour)
-                                                } else {
-                                                    null
-                                                }
-                                            }
+                                        for (h in 0..currentHour step labelStep) {
+                                            labelList.add(h to formatHourLabel(h))
+                                        }
+                                        // Always include the current hour at the far right
+                                        if (currentHour % labelStep != 0) {
+                                            labelList.add(currentHour to formatHourLabel(currentHour))
                                         }
 
                                         labelList.forEach { (index, time) ->
@@ -626,10 +707,10 @@ fun InsightsScreen(
                             }
                         }
 
-                        val sessionRatio = sessionDuration / 8f
+                        val sessionRatio = activeSessionDuration / 8f
                         var barProgress by remember { mutableStateOf(0f) }
                         
-                        LaunchedEffect(sessionDuration) {
+                        LaunchedEffect(activeSessionDuration) {
                             barProgress = sessionRatio
                         }
                         
@@ -670,7 +751,7 @@ fun InsightsScreen(
                                 fontWeight = FontWeight.Medium
                             )
                             Text(
-                                text = String.format("%.1fh Total", sessionDuration),
+                                text = "${formatUsageDuration(activeSessionDuration)} Total",
                                 color = OnSurfaceDark,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold
@@ -705,14 +786,14 @@ fun InsightsScreen(
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
 
-                        val showYoutube = isYoutubeInstalled && youtubeDuration > 0.01f
-                        val showInstagram = isInstagramInstalled && instagramDuration > 0.01f
-                        val showTiktok = isTiktokInstalled && tiktokDuration > 0.01f
+                        val showYoutube = isYoutubeInstalled && activeYoutubeDuration > 0.01f
+                        val showInstagram = isInstagramInstalled && activeInstagramDuration > 0.01f
+                        val showTiktok = isTiktokInstalled && activeTiktokDuration > 0.01f
 
                         if (showYoutube) {
                             AppUsageBar(
                                 appName = "YouTube (incl. Shorts)",
-                                duration = youtubeDuration,
+                                duration = activeYoutubeDuration,
                                 maxDuration = 4.0f,
                                 color = Color(0xFFE41E3F),
                                 icon = { YouTubeIcon() }
@@ -722,7 +803,7 @@ fun InsightsScreen(
                         if (showInstagram) {
                             AppUsageBar(
                                 appName = "Instagram (incl. Reels)",
-                                duration = instagramDuration,
+                                duration = activeInstagramDuration,
                                 maxDuration = 4.0f,
                                 color = Color(0xFFA121CE),
                                 icon = { InstagramIcon() }
@@ -732,7 +813,7 @@ fun InsightsScreen(
                         if (showTiktok) {
                             AppUsageBar(
                                 appName = "TikTok",
-                                duration = tiktokDuration,
+                                duration = activeTiktokDuration,
                                 maxDuration = 4.0f,
                                 color = Color(0xFF000000),
                                 icon = { TikTokIcon() }
@@ -790,7 +871,7 @@ fun InsightsScreen(
                                         modifier = Modifier.padding(top = 4.dp)
                                     ) {
                                         Text(
-                                            text = String.format("%.0f", scrollVelocity),
+                                            text = String.format("%.0f", activeScrollVelocity),
                                             fontSize = 20.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = OnSurfaceDark
@@ -805,7 +886,7 @@ fun InsightsScreen(
                                 }
                             }
 
-                            val skipColor = if (skipFrequency > 55f) RiskHigh else OnSurfaceDark
+                            val skipColor = if (activeSkipFrequency > 55f) RiskHigh else OnSurfaceDark
                             Card(
                                 modifier = Modifier.weight(1f),
                                 colors = CardDefaults.cardColors(containerColor = SurfaceSoft),
@@ -818,7 +899,7 @@ fun InsightsScreen(
                                         fontSize = 12.sp
                                     )
                                     Text(
-                                        text = String.format("%.0f%%", skipFrequency),
+                                        text = String.format("%.0f%%", activeSkipFrequency),
                                         fontSize = 20.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = skipColor,
@@ -875,7 +956,7 @@ fun InsightsScreen(
                             }
                         }
                         Text(
-                            text = String.format("%.1f", switchFreq),
+                            text = String.format("%.1f", activeSwitchFreq),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = OnSurfaceDark
@@ -937,15 +1018,15 @@ fun InsightsScreen(
                                     style = Stroke(width = 10f)
                                 )
                                 drawArc(
-                                    color = CommerceCobalt,
-                                    startAngle = -90f,
-                                    sweepAngle = nightRatio * 360f,
-                                    useCenter = false,
-                                    style = Stroke(width = 10f, cap = StrokeCap.Round)
-                                )
-                            }
-                            Text(
-                                text = String.format("%d%%", (nightRatio * 100).toInt()),
+                                                    color = CommerceCobalt,
+                                                    startAngle = -90f,
+                                                    sweepAngle = activeNightRatio * 360f,
+                                                    useCenter = false,
+                                                    style = Stroke(width = 10f, cap = StrokeCap.Round)
+                                                )
+                                            }
+                                            Text(
+                                                text = String.format("%d%%", (activeNightRatio * 100).toInt()),
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = OnSurfaceDark
@@ -1001,35 +1082,71 @@ private fun textLabel(text: String) {
 
 @Composable
 private fun YouTubeIcon() {
-    Surface(
-        modifier = Modifier.size(28.dp),
-        shape = RoundedCornerShape(6.dp),
-        color = Color(0xFFE41E3F)
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFFF0000)),
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "YouTube",
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
-            )
+        Canvas(modifier = Modifier.size(12.dp)) {
+            val path = Path().apply {
+                moveTo(0f, 0f)
+                lineTo(size.width, size.height / 2f)
+                lineTo(0f, size.height)
+                close()
+            }
+            drawPath(path, Color.White)
         }
     }
 }
 
 @Composable
 private fun InstagramIcon() {
-    Surface(
-        modifier = Modifier.size(28.dp),
-        shape = RoundedCornerShape(8.dp),
-        color = Color(0xFFA121CE)
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFFFCAF45),
+                        Color(0xFFE1306C),
+                        Color(0xFF833AB4),
+                        Color(0xFF405DE6)
+                    ),
+                    start = Offset(0f, 80f),
+                    end = Offset(80f, 0f)
+                )
+            ),
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = Icons.Default.VideoLibrary,
-                contentDescription = "Instagram",
-                tint = Color.White,
-                modifier = Modifier.size(14.dp)
+        Canvas(modifier = Modifier.size(16.dp)) {
+            val w = size.width
+            val h = size.height
+            
+            // Outer rounded rectangle path
+            drawRoundRect(
+                color = Color.White,
+                topLeft = Offset(1f, 1f),
+                size = androidx.compose.ui.geometry.Size(w - 2f, h - 2f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx(), 4.dp.toPx()),
+                style = Stroke(width = 2.dp.toPx())
+            )
+            
+            // Center circle
+            drawCircle(
+                color = Color.White,
+                radius = 3.5.dp.toPx(),
+                center = Offset(w / 2f, h / 2f),
+                style = Stroke(width = 2.dp.toPx())
+            )
+            
+            // Top-right dot
+            drawCircle(
+                color = Color.White,
+                radius = 1.dp.toPx(),
+                center = Offset(w - 3.5.dp.toPx(), 3.5.dp.toPx())
             )
         }
     }
@@ -1037,18 +1154,53 @@ private fun InstagramIcon() {
 
 @Composable
 private fun TikTokIcon() {
-    Surface(
-        modifier = Modifier.size(28.dp),
-        shape = RoundedCornerShape(100.dp),
-        color = Color.Black
+    Box(
+        modifier = Modifier
+            .size(28.dp)
+            .clip(RoundedCornerShape(100.dp))
+            .background(Color.Black),
+        contentAlignment = Alignment.Center
     ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = Icons.Default.MusicNote,
-                contentDescription = "TikTok",
-                tint = Color.White,
-                modifier = Modifier.size(16.dp)
-            )
+        Canvas(modifier = Modifier.size(16.dp)) {
+            val w = size.width
+            val h = size.height
+            
+            val drawGlyph: (Color, Offset) -> Unit = { glyphColor, offset ->
+                // 1. Note head (circle) on the bottom left
+                val headCenter = Offset(w * 0.35f + offset.x, h * 0.68f + offset.y)
+                val headRadius = w * 0.22f
+                drawCircle(
+                    color = glyphColor,
+                    radius = headRadius,
+                    center = headCenter
+                )
+                
+                // 2. Stem (vertical bar) going up
+                val stemWidth = w * 0.12f
+                drawRect(
+                    color = glyphColor,
+                    topLeft = Offset(w * 0.51f + offset.x, h * 0.2f + offset.y),
+                    size = androidx.compose.ui.geometry.Size(stemWidth, h * 0.5f)
+                )
+                
+                // 3. Flag (top hook) curving right and up
+                drawArc(
+                    color = glyphColor,
+                    startAngle = 0f,
+                    sweepAngle = 90f,
+                    useCenter = false,
+                    topLeft = Offset(w * 0.51f + offset.x, h * 0.05f + offset.y),
+                    size = androidx.compose.ui.geometry.Size(w * 0.4f, h * 0.3f),
+                    style = Stroke(width = stemWidth)
+                )
+            }
+
+            // Draw cyan offset shadow
+            drawGlyph(Color(0xFF00F2FE), Offset(-1.dp.toPx(), -1.dp.toPx()))
+            // Draw red/magenta offset shadow
+            drawGlyph(Color(0xFFFE0946), Offset(1.dp.toPx(), 1.dp.toPx()))
+            // Draw main white glyph
+            drawGlyph(Color.White, Offset.Zero)
         }
     }
 }
@@ -1096,7 +1248,7 @@ private fun AppUsageBar(
                     fontSize = 13.sp
                 )
                 Text(
-                    text = String.format("%.1f hrs", duration),
+                    text = formatUsageDuration(duration),
                     color = SecondaryGray,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
@@ -1116,6 +1268,28 @@ private fun AppUsageBar(
                         .background(color)
                 )
             }
+        }
+    }
+}
+
+private fun formatUsageDuration(durationHours: Float): String {
+    val totalMinutes = Math.round(durationHours * 60f)
+    if (totalMinutes == 0 && durationHours > 0f) {
+        return "1m"
+    }
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    
+    return when {
+        hours > 0 -> {
+            if (minutes > 0) {
+                "${hours}h ${minutes}m"
+            } else {
+                "${hours}h"
+            }
+        }
+        else -> {
+            "${minutes}m"
         }
     }
 }

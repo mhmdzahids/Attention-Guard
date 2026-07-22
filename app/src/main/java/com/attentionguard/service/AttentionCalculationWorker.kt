@@ -64,7 +64,7 @@ class AttentionCalculationWorker(
             // 5. If Real-world Sensor Mode is enabled, update global calculations so UI reacts
             if (!AttentionMonitoringService.useSimulatedData) {
                 // This updates the companion variables and triggers callbacks on the UI
-                AttentionMonitoringService.updateCalculations(session, scroll, switches, night, results.skip)
+                AttentionMonitoringService.updateCalculations(applicationContext, session, scroll, switches, night, results.skip)
             }
             
             return Result.success()

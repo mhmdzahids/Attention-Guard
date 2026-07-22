@@ -10,6 +10,8 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.util.Calendar
+import com.attentionguard.data.AppDatabase
+import com.attentionguard.data.AttentionLog
 
 class AttentionMonitoringService : Service() {
 
@@ -71,6 +73,7 @@ class AttentionMonitoringService : Service() {
 
         // Feed metrics to calculate API
         updateCalculations(
+            context = this,
             session = Math.min(8.0f, results.session),
             scroll = results.scroll,
             switches = Math.min(20.0f, results.switches),
@@ -194,30 +197,100 @@ class AttentionMonitoringService : Service() {
             var instagramMs = 0L
             var tiktokMs = 0L
 
-            val dailyStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
-            for ((pkg, stat) in dailyStats) {
-                if (TARGET_PACKAGES.contains(pkg)) {
-                    totalDailyMs += stat.totalTimeInForeground
+            var calculatedWithEvents = false
+            try {
+                val events = usageStatsManager.queryEvents(startTime, endTime)
+                val event = UsageEvents.Event()
+                val appOpenTimes = mutableMapOf<String, Long>()
+                
+                while (events.hasNextEvent()) {
+                    events.getNextEvent(event)
+                    val pkg = event.packageName
+                    val time = event.timeStamp
+                    
+                    if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                        appOpenTimes[pkg] = time
+                    } else if (event.eventType == UsageEvents.Event.ACTIVITY_PAUSED || 
+                               event.eventType == UsageEvents.Event.ACTIVITY_STOPPED) {
+                        val openTime = appOpenTimes.remove(pkg)
+                        if (openTime != null && time > openTime) {
+                            val duration = time - openTime
+                            
+                            when (pkg) {
+                                "com.google.android.youtube" -> youtubeMs += duration
+                                "com.instagram.android" -> instagramMs += duration
+                                "com.zhiliaoapp.musically", "com.ss.android.ugc.trill", 
+                                "com.ss.android.ugc.aweme", "com.ss.android.ugc.aweme.lite" -> tiktokMs += duration
+                            }
+                            
+                            if (TARGET_PACKAGES.contains(pkg)) {
+                                totalDailyMs += duration
+                                
+                                val cal = Calendar.getInstance().apply { timeInMillis = openTime }
+                                val hr = cal.get(Calendar.HOUR_OF_DAY)
+                                if (hr in 0..5) {
+                                    totalNightMs += duration
+                                }
+                            }
+                        }
+                    }
                 }
-                when (pkg) {
-                    "com.google.android.youtube" -> youtubeMs += stat.totalTimeInForeground
-                    "com.instagram.android" -> instagramMs += stat.totalTimeInForeground
-                    "com.zhiliaoapp.musically", "com.ss.android.ugc.trill", "com.ss.android.ugc.aweme", "com.ss.android.ugc.aweme.lite" -> tiktokMs += stat.totalTimeInForeground
+                
+                // Account for any app still running in foreground
+                for ((pkg, openTime) in appOpenTimes) {
+                    if (endTime > openTime) {
+                        val duration = endTime - openTime
+                        when (pkg) {
+                            "com.google.android.youtube" -> youtubeMs += duration
+                            "com.instagram.android" -> instagramMs += duration
+                            "com.zhiliaoapp.musically", "com.ss.android.ugc.trill", 
+                            "com.ss.android.ugc.aweme", "com.ss.android.ugc.aweme.lite" -> tiktokMs += duration
+                        }
+                        if (TARGET_PACKAGES.contains(pkg)) {
+                            totalDailyMs += duration
+                        }
+                    }
                 }
+                if (totalDailyMs > 0L) {
+                    calculatedWithEvents = true
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error calculating durations using UsageEvents", e)
             }
 
-            val nightCalendar = Calendar.getInstance()
-            nightCalendar.set(Calendar.HOUR_OF_DAY, 6)
-            nightCalendar.set(Calendar.MINUTE, 0)
-            nightCalendar.set(Calendar.SECOND, 0)
-            nightCalendar.set(Calendar.MILLISECOND, 0)
-            val nightEnd = Math.min(endTime, nightCalendar.timeInMillis)
-
-            if (endTime >= startTime) {
-                val nightStats = usageStatsManager.queryAndAggregateUsageStats(startTime, nightEnd)
-                for ((pkg, stat) in nightStats) {
+            if (!calculatedWithEvents) {
+                totalDailyMs = 0L
+                totalNightMs = 0L
+                youtubeMs = 0L
+                instagramMs = 0L
+                tiktokMs = 0L
+                
+                val dailyStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+                for ((pkg, stat) in dailyStats) {
                     if (TARGET_PACKAGES.contains(pkg)) {
-                        totalNightMs += stat.totalTimeInForeground
+                        totalDailyMs += stat.totalTimeInForeground
+                    }
+                    when (pkg) {
+                        "com.google.android.youtube" -> youtubeMs += stat.totalTimeInForeground
+                        "com.instagram.android" -> instagramMs += stat.totalTimeInForeground
+                        "com.zhiliaoapp.musically", "com.ss.android.ugc.trill", 
+                        "com.ss.android.ugc.aweme", "com.ss.android.ugc.aweme.lite" -> tiktokMs += stat.totalTimeInForeground
+                    }
+                }
+
+                val nightCalendar = Calendar.getInstance()
+                nightCalendar.set(Calendar.HOUR_OF_DAY, 6)
+                nightCalendar.set(Calendar.MINUTE, 0)
+                nightCalendar.set(Calendar.SECOND, 0)
+                nightCalendar.set(Calendar.MILLISECOND, 0)
+                val nightEnd = Math.min(endTime, nightCalendar.timeInMillis)
+
+                if (endTime >= startTime) {
+                    val nightStats = usageStatsManager.queryAndAggregateUsageStats(startTime, nightEnd)
+                    for ((pkg, stat) in nightStats) {
+                        if (TARGET_PACKAGES.contains(pkg)) {
+                            totalNightMs += stat.totalTimeInForeground
+                        }
                     }
                 }
             }
@@ -267,7 +340,7 @@ class AttentionMonitoringService : Service() {
             )
         }
 
-        fun updateCalculations(session: Float, scroll: Float, switches: Float, night: Float, skip: Float) {
+        fun updateCalculations(context: Context, session: Float, scroll: Float, switches: Float, night: Float, skip: Float) {
             val safeSession = if (session.isNaN() || session.isInfinite()) 0f else session
             val safeScroll = if (scroll.isNaN() || scroll.isInfinite()) 142f else scroll
             val safeSwitches = if (switches.isNaN() || switches.isInfinite()) 0f else switches
@@ -304,6 +377,38 @@ class AttentionMonitoringService : Service() {
                 apiScore < 0.65f -> "moderate"
                 else -> "high"
             }
+
+            val appContext = context.applicationContext
+            Thread {
+                try {
+                    val db = AppDatabase.getDatabase(appContext)
+                    val now = System.currentTimeMillis()
+                    kotlinx.coroutines.runBlocking {
+                        val shouldLog = if (useSimulatedData) {
+                            true
+                        } else {
+                            val lastLog = db.attentionLogDao().getLatestLog()
+                            val lastLogTime = lastLog?.timestamp ?: 0L
+                            (now - lastLogTime) > 120000L // 2 minutes rate-limit
+                        }
+
+                        if (shouldLog) {
+                            val log = AttentionLog(
+                                timestamp = now,
+                                sessionDuration = safeSession,
+                                scrollVelocity = safeScroll,
+                                taskSwitches = safeSwitches,
+                                nightRatio = safeNight,
+                                apiScore = apiScore,
+                                riskTier = riskTier
+                            )
+                            db.attentionLogDao().insertLog(log)
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("AttentionMonitor", "Error writing metrics to database", e)
+                }
+            }.start()
 
             onMetricsUpdated?.invoke(safeSession, safeScroll, safeSwitches, safeNight, safeSkip, apiScore, riskTier)
 

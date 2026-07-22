@@ -98,7 +98,10 @@ class AttentionAccessibilityService : AccessibilityService() {
             lastScrollTime = now
             
             if (timeDeltaMs in 1..3000) {
-                val velocityPxPerSec = (safeDistance / (timeDeltaMs / 1000f))
+                // Stabilize calculations to prevent high spikes when events occur in quick succession (< 80ms)
+                val timeSeconds = Math.max(80f, timeDeltaMs.toFloat()) / 1000f
+                val velocityPxPerSec = (safeDistance / timeSeconds).coerceIn(0f, 1000f)
+                
                 // Apply a simple low-pass filter (exponential moving average) to smooth the velocity
                 currentVelocity = if (currentVelocity == 0.0f || currentVelocity.isNaN()) velocityPxPerSec else (0.7f * currentVelocity + 0.3f * velocityPxPerSec)
                 if (currentVelocity.isNaN() || currentVelocity.isInfinite()) {
@@ -113,15 +116,16 @@ class AttentionAccessibilityService : AccessibilityService() {
                     val newAverage = (averageVelocity * 0.95f) + (currentVelocity * 0.05f)
                     if (newAverage.isNaN() || newAverage.isInfinite()) 142f else newAverage
                 }
+
+                // Increment counts inside the delta window to ensure accurate calculations
+                scrollCount++
+                // A "skip" is defined as a rapid, frantic fling gesture (speed > 450 px/s)
+                if (velocityPxPerSec > 450f) {
+                    skipCount++
+                }
             } else {
-                // If there's a long gap, reset current velocity but keep average stable
+                // Reset current velocity on long gap
                 currentVelocity = 100f
-            }
-            
-            scrollCount++
-            // If the user scrolls a large distance (>200px) in a single event, increment skip count
-            if (safeDistance > 200f) {
-                skipCount++
             }
         }
     }

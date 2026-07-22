@@ -219,6 +219,7 @@ fun MainAppScaffold() {
     // Function to handle signal changes and update calculations in simulated mode
     val onSignalChanged: () -> Unit = {
         AttentionMonitoringService.updateCalculations(
+            context = context,
             session = sessionDuration,
             scroll = scrollVelocity,
             switches = switchFreq,
@@ -391,11 +392,12 @@ fun MainAppScaffold() {
                             isTiktokInstalled = AttentionMonitoringService.isTiktokInstalled
 
                             AttentionMonitoringService.updateCalculations(
-                                results.session,
-                                results.scroll,
-                                results.switches,
-                                results.night,
-                                results.skip
+                                context = context,
+                                session = results.session,
+                                scroll = results.scroll,
+                                switches = results.switches,
+                                night = results.night,
+                                skip = results.skip
                             )
                         }
                     },
