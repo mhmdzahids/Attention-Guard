@@ -92,6 +92,44 @@ Hari ini telah diselesaikan serangkaian optimalisasi kode dan perbaikan bug arsi
     - **Bypass Mode Simulasi**: Mengubah default status `useSimulatedData` menjadi `false` agar alur perizinan wajib muncul sejak instalasi pertama.
     - **LaunchedEffect Penyelaras Simulasi**: Menambahkan `LaunchedEffect(useSimulatedData)` yang memaksa inisialisasi data simulasi berjalan seketika saat pengguna mengklik "Remind Me Later" atau menyalakan mode simulasi di Settings, memastikan detail kontribusi aplikasi tetap muncul dengan benar.
 
+#### 🕒 Pukul 22:36 - 22:39 WIB | Sinkronisasi Screen Time Digital Wellbeing & Sistem Notifikasi Peringatan
+*   **Masalah**:
+    1.  *Ketidakcocokan Durasi Aktif*: Catatan durasi penggunaan TikTok di aplikasi berbeda jauh dengan catatan riil dari Digital Wellbeing Android (misal: 2 jam 58 menit vs 4 jam 30 menit).
+    2.  *Ketiadaan Notifikasi Risiko*: Aplikasi belum terintegrasi dengan push notification untuk mengingatkan pengguna secara instan saat tingkat risiko atensi memburuk ke Moderate atau High.
+    3.  *Setup Izin Notifikasi*: Perlu integrasi runtime request izin `POST_NOTIFICATIONS` untuk perangkat Android 13+.
+*   **Perbaikan**:
+    *   **Penyelarasan Durasi UsageStats**: Mengubah query waktu di [AttentionMonitoringService.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/service/AttentionMonitoringService.kt) agar mengambil durasi aktif harian secara agregat dari `UsageStatsManager.queryAndAggregateUsageStats` dari pukul 00:00:00.000 (tengah malam) hingga waktu sekarang. `UsageEvents` kini hanya digunakan untuk menghitung data yang tergantung pada event (seperti rasio malam dan perpindahan aplikasi).
+    *   **Kartu Push Notifications & Izin**: Menambahkan izin `POST_NOTIFICATIONS` di manifest, kartu baru di [PermissionSetupScreen.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/ui/screens/PermissionSetupScreen.kt), serta pemindaian status di [MainActivity.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/MainActivity.kt) untuk memicu dialog perizinan saat diklik.
+    *   **Saluran & Pemicu Notifikasi Risiko**: Membuat notification channel baru `"attention_risk_alerts"` berprioritas tinggi. Implementasi fungsi `showRiskAlertNotification` untuk mengirimkan notifikasi "Attention Drift Detected" (Moderate) atau "High Attention Fatigue" (High). Notifikasi ini dikirim secara otomatis pada transisi tingkat risiko di database (sesuai cooldown 10 menit). Klik notifikasi akan langsung membuka dialog modal interaktif terkait di aplikasi.
+
+#### 🕒 Pukul 22:58 - 22:59 WIB | Penggantian Ikon Vektor dengan PNG Kustom (TikTok & YouTube)
+*   **Masalah**: Visualisasi ikon YouTube dan TikTok di tab Insights masih menggunakan gambar vektor programmatik Canvas buatan sendiri yang kurang representatif dibanding ikon official/kustom.
+*   **Perbaikan**:
+    *   **Mengimpor `androidx.compose.foundation.Image`, `painterResource`, dan `ContentScale` ke dalam [InsightsScreen.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/ui/screens/InsightsScreen.kt).
+    *   Mengubah fungsi `@Composable private fun YouTubeIcon()` dan `TikTokIcon()` agar merender berkas resource PNG kustom `R.drawable.ic_youtube` dan `R.drawable.ic_tiktok` berukuran `28.dp` dengan skala `ContentScale.Fit` agar terlihat tajam dan profesional di layar.
+
+#### 🕒 Pukul 23:10 - 23:11 WIB | Redesain Layout Kartu Gating (PermissionCard Alignment)
+*   **Masalah**: Lencana status "NOT GRANTED" tergencet dan terpotong menjadi dua baris di samping tulisan judul perizinan yang panjang seperti "Display Over Other Apps".
+*   **Perbaikan**:
+    *   Mengubah kerangka utama `PermissionCard` di [PermissionSetupScreen.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/ui/screens/PermissionSetupScreen.kt) menjadi vertikal `Column`.
+    *   Membuat baris teratas `Row` khusus untuk menaruh Ikon di sebelah kiri dan Lencana status di sebelah kanan (ujung).
+    *   Menyusun teks Judul dan Deskripsi secara vertikal di bawah baris ikon/lencana tersebut. Ini membebaskan lebar lencana status sehingga teks "NOT GRANTED" tampil utuh sejajar serta menyelaraskan desain dengan visual referensi gambar kedua.
+
+#### 🕒 Pukul 23:43 - 23:44 WIB | Peningkatan Visual Grafik ke Continuous Sliding Window
+*   **Masalah**: Grafik garis atensi (hourly) dan penanda label waktu di sumbu X berpindah secara melompat-lompat setiap jam (discrete hourly jumps).
+*   **Perbaikan**:
+    *   **Ticker Waktu Nyata**: Menambahkan state `liveTimeMs` di [InsightsScreen.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/ui/screens/InsightsScreen.kt) yang diperbarui setiap 1 detik menggunakan `LaunchedEffect` dan `delay(1000)`.
+    *   **Interpolasi Koordinat Canvas**: Mengubah perhitungan koordinat sumbu X pada Canvas grafik garis dan lingkaran penunjuk nilai tertinggi agar menggunakan koordinat epoch timestamp secara kontinu. Titik data digeser secara halus ke kiri seiring berjalannya waktu berdasarkan rumus relative drift.
+    *   **Drift & Efek Pudar Label Sumbu X**: Menghitung penanda jam secara dinamis, menggesernya secara kontinu ke kiri, dan menerapkan efek pudar (fade-in/fade-out) pada alpha warna label (`SecondaryGray.copy(alpha = alpha)`) dengan batas ambang margin 36.dp agar label masuk dan keluar batas grafik dengan halus tanpa berkedip atau saling menumpuk.
+
+#### 🕒 Pukul 23:51 - 23:52 WIB | Redesain Kartu Temporal Distribution
+*   **Masalah**: Visualisasi kartu "Temporal Distribution" di tab Insights belum selaras dengan mockup target (belum menggunakan garis penanda biru di tepi kiri dan ikon bulan yang tepat).
+*   **Perbaikan**:
+    *   Mengimpor `Icons.Default.Brightness3` (ikon bulan sabit) ke dalam [InsightsScreen.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/ui/screens/InsightsScreen.kt).
+    *   Memasang garis warna biru kobalt (`CommerceCobalt`) di tepi kiri kartu dengan memanfaatkan `IntrinsicSize.Min` dan `fillMaxHeight()` pada kontainer `Row` anak dari `Card`.
+    *   Mengganti teks status dengan tulisan bold warna biru: "High/Normal usage after 12:00 AM" bersanding dengan ikon bulan sabit.
+    *   Memperbesar ukuran donut progress chart menjadi `64.dp` dengan tebal stroke `12f` agar kontras dan terbaca jelas.
+
 ---
 
 ## 3. Hal-hal yang Dapat Disempurnakan di Masa Mendatang (Future Improvements)

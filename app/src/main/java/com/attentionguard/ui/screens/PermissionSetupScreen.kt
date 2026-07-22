@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,14 +49,27 @@ object PermissionChecker {
     fun isOverlayPermissionGranted(context: Context): Boolean {
         return Settings.canDrawOverlays(context)
     }
+
+    fun isNotificationPermissionGranted(context: Context): Boolean {
+        return if (android.os.Build.VERSION.SDK_INT >= 33) {
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                context,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
 }
 
 @Composable
 fun PermissionSetupScreen(
     isAccessibilityGranted: Boolean,
     isOverlayGranted: Boolean,
+    isNotificationGranted: Boolean,
     onFixAccessibility: () -> Unit,
     onFixOverlay: () -> Unit,
+    onFixNotifications: () -> Unit,
     onRemindMeLater: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -112,7 +126,7 @@ fun PermissionSetupScreen(
                     lineHeight = 38.sp
                 )
                 Text(
-                    text = "Attention Guard requires two special permissions to passively measure attention metrics without reading your private content.",
+                    text = "Attention Guard requires three special permissions to passively measure attention metrics without reading your private content.",
                     fontSize = 16.sp,
                     color = OnSurfaceVariant,
                     lineHeight = 22.sp
@@ -135,6 +149,14 @@ fun PermissionSetupScreen(
                     icon = Icons.Default.Layers,
                     isGranted = isOverlayGranted,
                     onClick = onFixOverlay
+                )
+
+                PermissionCard(
+                    title = "Push Notifications",
+                    description = "Required to deliver immediate behavioral nudges and attention risk alerts.",
+                    icon = Icons.Default.Notifications,
+                    isGranted = isNotificationGranted,
+                    onClick = onFixNotifications
                 )
             }
 
@@ -241,6 +263,8 @@ fun PermissionSetupScreen(
                         onFixAccessibility()
                     } else if (!isOverlayGranted) {
                         onFixOverlay()
+                    } else if (!isNotificationGranted) {
+                        onFixNotifications()
                     }
                 },
                 modifier = Modifier
@@ -284,7 +308,7 @@ fun PermissionCard(
     isGranted: Boolean,
     onClick: () -> Unit
 ) {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
@@ -292,61 +316,60 @@ fun PermissionCard(
             .background(Color.White)
             .clickable { onClick() }
             .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.Top
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(SurfaceSoft),
-            contentAlignment = Alignment.Center
+        // Top Row: Icon on left, status badge on right
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = CommerceCobalt,
-                modifier = Modifier.size(28.dp)
-            )
-        }
-
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceSoft),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = CommerceCobalt,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            
+            // Status badge
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(if (isGranted) RiskLow else RiskHigh)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = title,
-                    fontSize = 16.sp,
+                    text = if (isGranted) "ENABLED" else "NOT GRANTED",
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    color = OnSurfaceDark
+                    color = Color.White
                 )
-                
-                // Status badge
-                Box(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(if (isGranted) RiskLow else RiskHigh)
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = if (isGranted) "ENABLED" else "NOT GRANTED",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
             }
+        }
 
+        // Title and Description below
+        Column(
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = title,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = OnSurfaceDark
+            )
             Text(
                 text = description,
-                fontSize = 13.sp,
+                fontSize = 14.sp,
                 color = OnSurfaceVariant,
-                lineHeight = 18.sp
+                lineHeight = 20.sp
             )
         }
     }

@@ -203,19 +203,38 @@ class AttentionMonitoringService : Service() {
             calendar.set(Calendar.MILLISECOND, 0)
             val startTime = calendar.timeInMillis
 
-            // 1. Session Duration & Night-time Ratio
+            // 1. Get exact durations from aggregated UsageStats (matches Digital Wellbeing)
             var totalDailyMs = 0L
-            var totalNightMs = 0L
             var youtubeMs = 0L
             var instagramMs = 0L
             var tiktokMs = 0L
 
-            var calculatedWithEvents = false
+            val dailyStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+            for ((pkg, stat) in dailyStats) {
+                val canonicalPkg = getCanonicalPackageName(pkg)
+                val timeInFg = stat.totalTimeInForeground
+                if (timeInFg > 0L) {
+                    when (canonicalPkg) {
+                        "com.google.android.youtube" -> youtubeMs += timeInFg
+                        "com.instagram.android" -> instagramMs += timeInFg
+                        "com.zhiliaoapp.musically" -> tiktokMs += timeInFg
+                    }
+                    if (TARGET_PACKAGES.contains(pkg) || TARGET_PACKAGES.contains(canonicalPkg)) {
+                        totalDailyMs += timeInFg
+                    }
+                }
+            }
+
+            // 2. Query UsageEvents solely for switches and night ratio
+            var totalNightMs = 0L
+            var switchCount = 0
+            
             try {
                 val events = usageStatsManager.queryEvents(startTime, endTime)
                 val event = UsageEvents.Event()
                 val appOpenTimes = mutableMapOf<String, Long>()
                 var lastResumedPackage: String? = null
+                var lastPackage: String? = null
                 
                 while (events.hasNextEvent()) {
                     events.getNextEvent(event)
@@ -226,21 +245,17 @@ class AttentionMonitoringService : Service() {
                     if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
                         appOpenTimes[canonicalPkg] = time
                         lastResumedPackage = canonicalPkg
+                        
+                        if (canonicalPkg != lastPackage && lastPackage != null) {
+                            switchCount++
+                        }
+                        lastPackage = canonicalPkg
                     } else if (event.eventType == UsageEvents.Event.ACTIVITY_PAUSED || 
                                event.eventType == UsageEvents.Event.ACTIVITY_STOPPED) {
                         val openTime = appOpenTimes.remove(canonicalPkg)
                         if (openTime != null && time > openTime) {
                             val duration = time - openTime
-                            
-                            when (canonicalPkg) {
-                                "com.google.android.youtube" -> youtubeMs += duration
-                                "com.instagram.android" -> instagramMs += duration
-                                "com.zhiliaoapp.musically" -> tiktokMs += duration
-                            }
-                            
                             if (TARGET_PACKAGES.contains(pkg) || TARGET_PACKAGES.contains(canonicalPkg)) {
-                                totalDailyMs += duration
-                                
                                 val cal = Calendar.getInstance().apply { timeInMillis = openTime }
                                 val hr = cal.get(Calendar.HOUR_OF_DAY)
                                 if (hr in 0..5) {
@@ -257,8 +272,7 @@ class AttentionMonitoringService : Service() {
                     }
                 }
                 
-                // Account for any app still running in foreground
-                val handledPackages = mutableSetOf<String>()
+                // Account for any app still running in foreground for totalNightMs
                 for ((pkg, openTime) in appOpenTimes) {
                     val canonicalLastResumed = lastResumedPackage
                     val canonicalActiveAccessibility = AttentionAccessibilityService.activePackage?.let { getCanonicalPackageName(it) }
@@ -266,13 +280,6 @@ class AttentionMonitoringService : Service() {
                     
                     if (isCurrentlyForeground && endTime > openTime) {
                         val duration = endTime - openTime
-                        when (pkg) {
-                            "com.google.android.youtube" -> { youtubeMs += duration; handledPackages.add("com.google.android.youtube") }
-                            "com.instagram.android" -> { instagramMs += duration; handledPackages.add("com.instagram.android") }
-                            "com.zhiliaoapp.musically" -> { tiktokMs += duration; handledPackages.add("com.zhiliaoapp.musically") }
-                        }
-                        totalDailyMs += duration
-                        
                         val cal = Calendar.getInstance().apply { timeInMillis = openTime }
                         val hr = cal.get(Calendar.HOUR_OF_DAY)
                         if (hr in 0..5) {
@@ -280,77 +287,8 @@ class AttentionMonitoringService : Service() {
                         }
                     }
                 }
-                
-                // Fallback using Accessibility Service active package tracking
-                val activePkg = AttentionAccessibilityService.activePackage
-                if (activePkg != null) {
-                    val canonicalActive = getCanonicalPackageName(activePkg)
-                    if (!handledPackages.contains(canonicalActive)) {
-                        val isTarget = TARGET_PACKAGES.contains(activePkg) || TARGET_PACKAGES.contains(canonicalActive)
-                        if (isTarget) {
-                            val startTimeActive = AttentionAccessibilityService.activePackageStartTime
-                            if (startTimeActive > 0L && endTime > startTimeActive) {
-                                val duration = endTime - startTimeActive
-                                when (canonicalActive) {
-                                    "com.google.android.youtube" -> youtubeMs += duration
-                                    "com.instagram.android" -> instagramMs += duration
-                                    "com.zhiliaoapp.musically" -> tiktokMs += duration
-                                }
-                                totalDailyMs += duration
-                                
-                                val cal = Calendar.getInstance().apply { timeInMillis = startTimeActive }
-                                val hr = cal.get(Calendar.HOUR_OF_DAY)
-                                if (hr in 0..5) {
-                                    totalNightMs += duration
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                if (totalDailyMs > 0L) {
-                    calculatedWithEvents = true
-                }
             } catch (e: Exception) {
-                Log.e(TAG, "Error calculating durations using UsageEvents", e)
-            }
-
-            if (!calculatedWithEvents) {
-                totalDailyMs = 0L
-                totalNightMs = 0L
-                youtubeMs = 0L
-                instagramMs = 0L
-                tiktokMs = 0L
-                
-                val dailyStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
-                for ((pkg, stat) in dailyStats) {
-                    val canonicalPkg = getCanonicalPackageName(pkg)
-                    if (TARGET_PACKAGES.contains(pkg) || TARGET_PACKAGES.contains(canonicalPkg)) {
-                        totalDailyMs += stat.totalTimeInForeground
-                    }
-                    when (canonicalPkg) {
-                        "com.google.android.youtube" -> youtubeMs += stat.totalTimeInForeground
-                        "com.instagram.android" -> instagramMs += stat.totalTimeInForeground
-                        "com.zhiliaoapp.musically" -> tiktokMs += stat.totalTimeInForeground
-                    }
-                }
-
-                val nightCalendar = Calendar.getInstance()
-                nightCalendar.set(Calendar.HOUR_OF_DAY, 6)
-                nightCalendar.set(Calendar.MINUTE, 0)
-                nightCalendar.set(Calendar.SECOND, 0)
-                nightCalendar.set(Calendar.MILLISECOND, 0)
-                val nightEnd = Math.min(endTime, nightCalendar.timeInMillis)
-
-                if (endTime >= startTime) {
-                    val nightStats = usageStatsManager.queryAndAggregateUsageStats(startTime, nightEnd)
-                    for ((pkg, stat) in nightStats) {
-                        val canonicalPkg = getCanonicalPackageName(pkg)
-                        if (TARGET_PACKAGES.contains(pkg) || TARGET_PACKAGES.contains(canonicalPkg)) {
-                            totalNightMs += stat.totalTimeInForeground
-                        }
-                    }
-                }
+                Log.e(TAG, "Error calculating night ratio / switches in queryMetricsDirectly", e)
             }
 
             val sessionHours = totalDailyMs.toFloat() / 3600000f
@@ -364,25 +302,6 @@ class AttentionMonitoringService : Service() {
             val scrollVelocityVal = AttentionAccessibilityService.getScrollVelocity()
 
             // 3. Task Switches per hour
-            var switchCount = 0
-            try {
-                val events = usageStatsManager.queryEvents(startTime, endTime)
-                val event = UsageEvents.Event()
-                var lastPackage: String? = null
-                while (events.hasNextEvent()) {
-                    events.getNextEvent(event)
-                    if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
-                        val currentPackage = event.packageName
-                        if (currentPackage != lastPackage && lastPackage != null) {
-                            switchCount++
-                        }
-                        lastPackage = currentPackage
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error querying UsageEvents", e)
-            }
-
             val elapsedHrs = (endTime - startTime).toFloat() / 3600000f
             val switchFreqVal = if (elapsedHrs > 0.05f) switchCount.toFloat() / elapsedHrs else 0f
 
@@ -486,7 +405,54 @@ class AttentionMonitoringService : Service() {
             // Trigger visual modal notifications only when cooldown conditions are met
             if (isGenuineAlertTransition) {
                 onTriggerAlert?.invoke(riskTier, apiScore)
+                showRiskAlertNotification(context, riskTier, apiScore)
             }
+        }
+
+        private fun showRiskAlertNotification(context: Context, riskLevel: String, apiScore: Float) {
+            val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val alertChannelId = "attention_risk_alerts"
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    alertChannelId,
+                    "Attention Risk Alerts",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Delivers immediate behavioral nudges and attention risk alerts"
+                }
+                manager.createNotificationChannel(channel)
+            }
+            
+            val intent = Intent(context, Class.forName("com.attentionguard.MainActivity")).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                putExtra("risk_alert", riskLevel)
+            }
+            
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                riskLevel.hashCode(),
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            val title = if (riskLevel == "high") "High Attention Fatigue" else "Attention Drift Detected"
+            val body = if (riskLevel == "high") {
+                "Compulsive scrolling detected. Tap to launch your Prevention Plan."
+            } else {
+                "You've been in a continuous short-form video session. Take a 5-minute break."
+            }
+            
+            val notification = NotificationCompat.Builder(context, alertChannelId)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .build()
+                
+            manager.notify(riskLevel.hashCode(), notification)
         }
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.SyncAlt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Brightness3
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,8 +30,12 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.ui.layout.layout
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 
 data class ChartPoint(val label: String, val value: Float)
+data class TimestampedPoint(val timestamp: Long, val value: Float)
 
 @Composable
 fun InsightsScreen(
@@ -166,54 +171,63 @@ fun InsightsScreen(
     val hourlyBaseline = listOf(0.45f, 0.25f, 0.15f, 0.45f, 0.58f, 0.42f, 0.65f, 0.52f, 0.45f)
     val scaleFactor = if (activeApiScore > 0f) activeApiScore / 0.52f else 1f
     
-    // Group logs by exact hour of day (0..24), smooth out baseline fallback via linear interpolation (lerp)
-    val currentHour = remember(dbLogs) { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
-    val visibleHoursCount = 24
+    var liveTimeMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            liveTimeMs = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1000L)
+        }
+    }
 
-    // Group logs by exact hour of day in a 24-hour sliding window, smooth out baseline fallback via linear interpolation (lerp)
-    val hourlyPoints = remember(dbLogs, scaleFactor, currentHour) {
-        val cal = java.util.Calendar.getInstance()
-        (0..23).map { i ->
-            val hoursAgo = 23 - i
-            val slotCal = java.util.Calendar.getInstance().apply {
-                timeInMillis = cal.timeInMillis
-                add(java.util.Calendar.HOUR_OF_DAY, -hoursAgo)
-            }
-            val hourOfDay = slotCal.get(java.util.Calendar.HOUR_OF_DAY)
-            val dayOfYear = slotCal.get(java.util.Calendar.DAY_OF_YEAR)
-            val year = slotCal.get(java.util.Calendar.YEAR)
 
-            val logsInSlot = dbLogs.filter { log ->
-                val logCal = java.util.Calendar.getInstance().apply { timeInMillis = log.timestamp }
-                logCal.get(java.util.Calendar.HOUR_OF_DAY) == hourOfDay &&
-                logCal.get(java.util.Calendar.DAY_OF_YEAR) == dayOfYear &&
-                logCal.get(java.util.Calendar.YEAR) == year
-            }
-
-            if (logsInSlot.isNotEmpty()) {
-                logsInSlot.map { it.apiScore }.average().toFloat()
+    // Group logs in a continuous 24-hour sliding window based on timestamps, blending in interpolated baseline fallbacks
+    val hourlyTimestampedPoints = remember(dbLogs, scaleFactor, liveTimeMs) {
+        val totalDuration = 24 * 3600000L
+        val step = 30 * 60000L // 30 minutes interval for smooth interpolation
+        val startTime = liveTimeMs - totalDuration
+        
+        (0..48).map { i ->
+            val t = startTime + i * step
+            
+            // Find closest log within 15 minutes of the step timestamp
+            val closestLog = dbLogs.filter { log ->
+                Math.abs(log.timestamp - t) <= 15 * 60000L
+            }.minByOrNull { Math.abs(it.timestamp - t) }
+            
+            val score = if (closestLog != null) {
+                closestLog.apiScore
             } else {
+                val cal = java.util.Calendar.getInstance().apply { timeInMillis = t }
+                val hourOfDay = cal.get(java.util.Calendar.HOUR_OF_DAY)
                 val lowIndex = hourOfDay / 3
                 val highIndex = Math.min(8, lowIndex + 1)
                 val fraction = (hourOfDay % 3) / 3f
                 val interpolatedBaseline = hourlyBaseline[lowIndex] * (1f - fraction) + hourlyBaseline[highIndex] * fraction
                 Math.min(1.0f, interpolatedBaseline * scaleFactor)
             }
+            
+            TimestampedPoint(t, score)
         }
     }
-    
-    val peakIndex = remember(hourlyPoints) {
-        hourlyPoints.indices.maxByOrNull { hourlyPoints[it] } ?: 23
+
+    val peakTimestampedPoint = remember(hourlyTimestampedPoints) {
+        hourlyTimestampedPoints.maxByOrNull { it.value }
     }
-    val peakHourText = remember(peakIndex, currentHour) {
-        val peakHourOfDay = (currentHour - 23 + peakIndex + 24) % 24
-        val amPm = if (peakHourOfDay >= 12) "PM" else "AM"
-        val displayHour = when {
-            peakHourOfDay == 0 -> 12
-            peakHourOfDay > 12 -> peakHourOfDay - 12
-            else -> peakHourOfDay
+
+    val peakHourText = remember(peakTimestampedPoint) {
+        if (peakTimestampedPoint != null) {
+            val cal = java.util.Calendar.getInstance().apply { timeInMillis = peakTimestampedPoint.timestamp }
+            val hrVal = cal.get(java.util.Calendar.HOUR_OF_DAY)
+            val amPm = if (hrVal >= 12) "PM" else "AM"
+            val displayHour = when {
+                hrVal == 0 -> 12
+                hrVal > 12 -> hrVal - 12
+                else -> hrVal
+            }
+            String.format("%02d:00 %s", displayHour, amPm)
+        } else {
+            "N/A"
         }
-        String.format("%02d:00 %s", displayHour, amPm)
     }
 
     // 2. Prepare Weekly Data (Day by Day)
@@ -260,7 +274,7 @@ fun InsightsScreen(
 
     // Diagnostic logs for developers
     android.util.Log.d("AttentionGuardChart", "ChartType: $chartType | DB Logs: ${dbLogs.size} entries | Today's Logs: ${todayLogs.size} entries")
-    android.util.Log.d("AttentionGuardChart", "Hourly Points: $hourlyPoints")
+    android.util.Log.d("AttentionGuardChart", "Hourly Points: ${hourlyTimestampedPoints.map { it.value }}")
     android.util.Log.d("AttentionGuardChart", "Weekly Points: ${weeklyPoints.map { "${it.label}=${it.value}" }}")
 
     Box(
@@ -458,14 +472,10 @@ fun InsightsScreen(
                                         }
 
                                         if (currentRenderType == "hourly") {
-                                            // Scale X dynamically based on visibleHoursCount so the last visible hour sits at the rightmost edge w
-                                            val points = hourlyPoints.take(visibleHoursCount).mapIndexed { index, valRaw ->
-                                                val x = if (visibleHoursCount > 1) {
-                                                    index * w / (visibleHoursCount - 1).toFloat()
-                                                } else {
-                                                    w / 2f
-                                                }
-                                                Offset(x, h - (valRaw * h * chartProgress.value))
+                                            val points = hourlyTimestampedPoints.map { pt ->
+                                                val timeDiff = liveTimeMs - pt.timestamp
+                                                val x = w - (timeDiff.toFloat() / 86400000f * w)
+                                                Offset(x, h - (pt.value * h * chartProgress.value))
                                             }
 
                                             if (points.isNotEmpty()) {
@@ -499,25 +509,23 @@ fun InsightsScreen(
                                                     )
                                                 )
 
-                                                // Draw highlight indicator only if it's within visible points range
-                                                if (peakIndex < points.size) {
-                                                    val highlightX = if (visibleHoursCount > 1) {
-                                                        peakIndex * w / (visibleHoursCount - 1).toFloat()
-                                                    } else {
-                                                        w / 2f
-                                                    }
-                                                    val highlightY = h - (hourlyPoints[peakIndex] * h * chartProgress.value)
-                                                    drawCircle(
-                                                        color = themeColor,
-                                                        radius = 15f * chartProgress.value,
-                                                        center = Offset(highlightX, highlightY),
-                                                        style = Stroke(width = 4f * chartProgress.value)
-                                                    )
-                                                    drawCircle(
-                                                        color = themeColor,
-                                                        radius = 6f * chartProgress.value,
-                                                        center = Offset(highlightX, highlightY)
-                                                    )
+                                                if (peakTimestampedPoint != null) {
+                                                     val timeDiff = liveTimeMs - peakTimestampedPoint.timestamp
+                                                     val highlightX = w - (timeDiff.toFloat() / 86400000f * w)
+                                                     val highlightY = h - (peakTimestampedPoint.value * h * chartProgress.value)
+                                                     if (highlightX in 0f..w) {
+                                                         drawCircle(
+                                                             color = themeColor,
+                                                             radius = 15f * chartProgress.value,
+                                                             center = Offset(highlightX, highlightY),
+                                                             style = Stroke(width = 4f * chartProgress.value)
+                                                         )
+                                                         drawCircle(
+                                                             color = themeColor,
+                                                             radius = 6f * chartProgress.value,
+                                                             center = Offset(highlightX, highlightY)
+                                                         )
+                                                     }
                                                 }
                                             }
                                         } else {
@@ -554,48 +562,70 @@ fun InsightsScreen(
                                         .padding(top = 4.dp)
                                 ) {
                                     if (currentRenderType == "hourly") {
-                                        val formatHourLabel: (Int) -> String = { hourVal ->
-                                            when {
-                                                hourVal == 0 || hourVal == 24 -> "12 AM"
-                                                hourVal == 12 -> "12 PM"
-                                                hourVal > 12 -> "${hourVal - 12} PM"
-                                                else -> "$hourVal AM"
-                                            }
-                                        }
-
-                                        // Step size of 3 hours for zoomed, 6 hours for unzoomed view
+                                        // Dynamic continuous X labels drift & fade-in/fade-out
                                         val labelStep = if (chartScale > 1.5f) 3 else 6
-                                        val labelList = mutableListOf<Pair<Int, String>>()
-                                        
-                                        // Start from current hour (rightmost, index 23) and go backward
-                                        var idx = 23
-                                        while (idx >= 0) {
-                                            val hr = (currentHour - (23 - idx) + 24) % 24
-                                            labelList.add(idx to formatHourLabel(hr))
-                                            idx -= labelStep
+                                        val hourMarks = remember(liveTimeMs, labelStep) {
+                                            val totalDuration = 24 * 3600000L
+                                            val startTime = liveTimeMs - totalDuration
+                                            val marks = mutableListOf<Pair<Long, String>>()
+                                            
+                                            val cal = java.util.Calendar.getInstance().apply {
+                                                timeInMillis = startTime
+                                                set(java.util.Calendar.MINUTE, 0)
+                                                set(java.util.Calendar.SECOND, 0)
+                                                set(java.util.Calendar.MILLISECOND, 0)
+                                            }
+                                            if (cal.timeInMillis < startTime) {
+                                                cal.add(java.util.Calendar.HOUR_OF_DAY, 1)
+                                            }
+                                            
+                                            while (cal.timeInMillis <= liveTimeMs) {
+                                                val t = cal.timeInMillis
+                                                val hourVal = cal.get(java.util.Calendar.HOUR_OF_DAY)
+                                                if (hourVal % labelStep == 0) {
+                                                    val label = when {
+                                                        hourVal == 0 || hourVal == 24 -> "12 AM"
+                                                        hourVal == 12 -> "12 PM"
+                                                        hourVal > 12 -> "${hourVal - 12} PM"
+                                                        else -> "$hourVal AM"
+                                                    }
+                                                    marks.add(t to label)
+                                                }
+                                                cal.add(java.util.Calendar.HOUR_OF_DAY, 1)
+                                            }
+                                            marks
                                         }
 
-                                        labelList.forEach { (index, time) ->
-                                            Text(
-                                                text = time,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = SecondaryGray,
-                                                modifier = Modifier.layout { measurable, constraints ->
-                                                    val placeable = measurable.measure(constraints)
-                                                    layout(placeable.width, placeable.height) {
-                                                        // Center label under its graph point
-                                                        val wPx = chartWidth.toPx()
-                                                        val xPos = if (visibleHoursCount > 1) {
-                                                            (index * (wPx / (visibleHoursCount - 1).toFloat())) - (placeable.width / 2f)
-                                                        } else {
-                                                            (wPx / 2f) - (placeable.width / 2f)
+                                        hourMarks.forEach { (timestamp, time) ->
+                                            val timeDiff = liveTimeMs - timestamp
+                                            val rawXFraction = timeDiff.toFloat() / 86400000f
+                                            
+                                            val xPosDp = chartWidth - (chartWidth * rawXFraction)
+                                            val boundaryThresholdDp = 36.dp
+                                            
+                                            val alpha = when {
+                                                xPosDp < 0.dp || xPosDp > chartWidth -> 0f
+                                                xPosDp < boundaryThresholdDp -> (xPosDp / boundaryThresholdDp)
+                                                xPosDp > chartWidth - boundaryThresholdDp -> ((chartWidth - xPosDp) / boundaryThresholdDp)
+                                                else -> 1f
+                                            }.coerceIn(0f, 1f)
+                                            
+                                            if (alpha > 0.01f) {
+                                                Text(
+                                                    text = time,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = SecondaryGray.copy(alpha = alpha),
+                                                    modifier = Modifier.layout { measurable, constraints ->
+                                                        val placeable = measurable.measure(constraints)
+                                                        layout(placeable.width, placeable.height) {
+                                                            val wPx = chartWidth.toPx()
+                                                            val xPos = wPx - (rawXFraction * wPx) - (placeable.width / 2f)
+                                                            placeable.placeRelative(xPos.toInt(), 0)
                                                         }
-                                                        val clampedX = xPos.coerceIn(0f, wPx - placeable.width)
-                                                        placeable.placeRelative(clampedX.toInt(), 0)
                                                     }
-                                                }
-                                            )
+                                                )
+                                            }
                                         }
                                     } else {
                                         val numBars = weeklyPoints.size
@@ -987,68 +1017,91 @@ fun InsightsScreen(
                     shape = RoundedCornerShape(16.dp),
                     border = BorderStroke(1.dp, HairlineSoft),
                     colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(BorderStroke(4.dp, CommerceCobalt), RoundedCornerShape(16.dp))
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .height(IntrinsicSize.Min),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
-                            textLabel(text = "Temporal Distribution")
-                            Text(
-                                text = "Post-midnight Session Ratio",
-                                color = SecondaryGray,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        // Left accent bar
+                        Box(
+                            modifier = Modifier
+                                .width(4.dp)
+                                .fillMaxHeight()
+                                .background(
+                                    color = CommerceCobalt,
+                                    shape = RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)
+                                )
+                        )
+
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 16.dp, vertical = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.SyncAlt,
-                                    contentDescription = "Midnight",
-                                    tint = CommerceCobalt,
-                                    modifier = Modifier.size(14.dp)
+                                Text(
+                                    text = "Temporal Distribution",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = OnSurfaceDark
                                 )
                                 Text(
-                                    text = "Midnight usage detected",
-                                    color = CommerceCobalt,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
+                                    text = "Post-midnight Session Ratio",
+                                    color = SecondaryGray,
+                                    fontSize = 15.sp
+                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.padding(top = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Brightness3,
+                                        contentDescription = "Midnight",
+                                        tint = CommerceCobalt,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = if (activeNightRatio >= 0.35f) "High usage after 12:00 AM" else "Normal usage after 12:00 AM",
+                                        color = CommerceCobalt,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            // Circular Progress indicator
+                            Box(
+                                modifier = Modifier.size(64.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    drawCircle(
+                                        color = SurfaceSoft,
+                                        style = Stroke(width = 12f)
+                                    )
+                                    drawArc(
+                                        color = CommerceCobalt,
+                                        startAngle = -90f,
+                                        sweepAngle = activeNightRatio * 360f,
+                                        useCenter = false,
+                                        style = Stroke(width = 12f, cap = StrokeCap.Round)
+                                    )
+                                }
+                                Text(
+                                    text = String.format("%d%%", (activeNightRatio * 100).toInt()),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = OnSurfaceDark
                                 )
                             }
-                        }
-
-                        // Circular Progress indicator
-                        Box(
-                            modifier = Modifier.size(56.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Canvas(modifier = Modifier.fillMaxSize()) {
-                                drawCircle(
-                                    color = SurfaceSoft,
-                                    style = Stroke(width = 10f)
-                                )
-                                drawArc(
-                                                    color = CommerceCobalt,
-                                                    startAngle = -90f,
-                                                    sweepAngle = activeNightRatio * 360f,
-                                                    useCenter = false,
-                                                    style = Stroke(width = 10f, cap = StrokeCap.Round)
-                                                )
-                                            }
-                                            Text(
-                                                text = String.format("%d%%", (activeNightRatio * 100).toInt()),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = OnSurfaceDark
-                            )
                         }
                     }
                 }
@@ -1100,23 +1153,12 @@ private fun textLabel(text: String) {
 
 @Composable
 private fun YouTubeIcon() {
-    Box(
-        modifier = Modifier
-            .size(28.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFFFF0000)),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.size(12.dp)) {
-            val path = Path().apply {
-                moveTo(0f, 0f)
-                lineTo(size.width, size.height / 2f)
-                lineTo(0f, size.height)
-                close()
-            }
-            drawPath(path, Color.White)
-        }
-    }
+    Image(
+        painter = painterResource(id = com.attentionguard.R.drawable.ic_youtube),
+        contentDescription = "YouTube Icon",
+        modifier = Modifier.size(28.dp),
+        contentScale = ContentScale.Fit
+    )
 }
 
 @Composable
@@ -1172,55 +1214,12 @@ private fun InstagramIcon() {
 
 @Composable
 private fun TikTokIcon() {
-    Box(
-        modifier = Modifier
-            .size(28.dp)
-            .clip(RoundedCornerShape(100.dp))
-            .background(Color.Black),
-        contentAlignment = Alignment.Center
-    ) {
-        Canvas(modifier = Modifier.size(16.dp)) {
-            val w = size.width
-            val h = size.height
-            
-            val drawGlyph: (Color, Offset) -> Unit = { glyphColor, offset ->
-                // 1. Note head (circle) on the bottom left
-                val headCenter = Offset(w * 0.35f + offset.x, h * 0.68f + offset.y)
-                val headRadius = w * 0.22f
-                drawCircle(
-                    color = glyphColor,
-                    radius = headRadius,
-                    center = headCenter
-                )
-                
-                // 2. Stem (vertical bar) going up
-                val stemWidth = w * 0.12f
-                drawRect(
-                    color = glyphColor,
-                    topLeft = Offset(w * 0.51f + offset.x, h * 0.2f + offset.y),
-                    size = androidx.compose.ui.geometry.Size(stemWidth, h * 0.5f)
-                )
-                
-                // 3. Flag (top hook) curving right and up
-                drawArc(
-                    color = glyphColor,
-                    startAngle = 0f,
-                    sweepAngle = 90f,
-                    useCenter = false,
-                    topLeft = Offset(w * 0.51f + offset.x, h * 0.05f + offset.y),
-                    size = androidx.compose.ui.geometry.Size(w * 0.4f, h * 0.3f),
-                    style = Stroke(width = stemWidth)
-                )
-            }
-
-            // Draw cyan offset shadow
-            drawGlyph(Color(0xFF00F2FE), Offset(-1.dp.toPx(), -1.dp.toPx()))
-            // Draw red/magenta offset shadow
-            drawGlyph(Color(0xFFFE0946), Offset(1.dp.toPx(), 1.dp.toPx()))
-            // Draw main white glyph
-            drawGlyph(Color.White, Offset.Zero)
-        }
-    }
+    Image(
+        painter = painterResource(id = com.attentionguard.R.drawable.ic_tiktok),
+        contentDescription = "TikTok Icon",
+        modifier = Modifier.size(28.dp),
+        contentScale = ContentScale.Fit
+    )
 }
 
 @Composable

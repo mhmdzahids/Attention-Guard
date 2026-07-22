@@ -74,6 +74,11 @@ class MainActivity : ComponentActivity() {
             workRequest
         )
     }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
 }
 
 // Data holder for historical alerts
@@ -95,27 +100,6 @@ fun MainAppScaffold() {
     val dbLogs by database.attentionLogDao().getAllLogsFlow().collectAsState(initial = emptyList())
     
     var useSimulatedData by remember { mutableStateOf(AttentionMonitoringService.useSimulatedData) }
-    
-    var isAccessibilityGranted by remember {
-        mutableStateOf(PermissionChecker.isAccessibilityServiceEnabled(context))
-    }
-    var isOverlayGranted by remember {
-        mutableStateOf(PermissionChecker.isOverlayPermissionGranted(context))
-    }
-
-    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                isAccessibilityGranted = PermissionChecker.isAccessibilityServiceEnabled(context)
-                isOverlayGranted = PermissionChecker.isOverlayPermissionGranted(context)
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
     
     // Behaviors State
     var sessionDuration by remember { mutableStateOf(2.5f) }
@@ -142,6 +126,43 @@ fun MainAppScaffold() {
     // Modal state triggers
     var showNudgeModal by remember { mutableStateOf(false) }
     var showOverlayModal by remember { mutableStateOf(false) }
+
+    var isAccessibilityGranted by remember {
+        mutableStateOf(PermissionChecker.isAccessibilityServiceEnabled(context))
+    }
+    var isOverlayGranted by remember {
+        mutableStateOf(PermissionChecker.isOverlayPermissionGranted(context))
+    }
+    var isNotificationGranted by remember {
+        mutableStateOf(PermissionChecker.isNotificationPermissionGranted(context))
+    }
+
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                isAccessibilityGranted = PermissionChecker.isAccessibilityServiceEnabled(context)
+                isOverlayGranted = PermissionChecker.isOverlayPermissionGranted(context)
+                isNotificationGranted = PermissionChecker.isNotificationPermissionGranted(context)
+
+                // Check if opened from notification risk alert
+                val act = context as? ComponentActivity
+                val riskAlert = act?.intent?.getStringExtra("risk_alert")
+                if (riskAlert != null) {
+                    if (riskAlert == "moderate") {
+                        showNudgeModal = true
+                    } else if (riskAlert == "high") {
+                        showOverlayModal = true
+                    }
+                    act.intent.removeExtra("risk_alert")
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     // Alerts collection mapped dynamically from Database
     val sdfTime = remember { SimpleDateFormat("hh:mm a dd/MM", Locale.getDefault()) }
@@ -344,10 +365,11 @@ fun MainAppScaffold() {
         }
     }
 
-    if (!useSimulatedData && (!isAccessibilityGranted || !isOverlayGranted)) {
+    if (!useSimulatedData && (!isAccessibilityGranted || !isOverlayGranted || !isNotificationGranted)) {
         PermissionSetupScreen(
             isAccessibilityGranted = isAccessibilityGranted,
             isOverlayGranted = isOverlayGranted,
+            isNotificationGranted = isNotificationGranted,
             onFixAccessibility = {
                 val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                 context.startActivity(intent)
@@ -363,6 +385,15 @@ fun MainAppScaffold() {
                     Uri.parse("package:${context.packageName}")
                 )
                 context.startActivity(intent)
+            },
+            onFixNotifications = {
+                if (android.os.Build.VERSION.SDK_INT >= 33) {
+                    val act = context as? ComponentActivity
+                    act?.requestPermissions(
+                        arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),
+                        102
+                    )
+                }
             },
             onRemindMeLater = {
                 AttentionMonitoringService.useSimulatedData = true
