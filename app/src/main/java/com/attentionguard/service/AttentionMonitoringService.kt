@@ -108,6 +108,8 @@ class AttentionMonitoringService : Service() {
         var useSimulatedData = true
         var apiScore = 0.52f
         var riskTier = "moderate"
+        private var lastAlertTime = 0L
+        private var lastAlertRisk: String? = null
 
         // Current real-world or simulated metric values
         var currentSession = 2.5f
@@ -386,18 +388,30 @@ class AttentionMonitoringService : Service() {
                 else -> "high"
             }
 
+            // Implement a 10-minute cooldown on alert triggers to prevent flip-flop/jitter spam
+            val now = System.currentTimeMillis()
+            var isGenuineAlertTransition = false
+            if (riskTier != prevRisk && riskTier != "low") {
+                val cooldownMs = 600000L // 10 minutes cooldown
+                if (riskTier != lastAlertRisk || (now - lastAlertTime) > cooldownMs) {
+                    isGenuineAlertTransition = true
+                    lastAlertTime = now
+                    lastAlertRisk = riskTier
+                }
+            }
+
             val appContext = context.applicationContext
             Thread {
                 try {
                     val db = AppDatabase.getDatabase(appContext)
-                    val now = System.currentTimeMillis()
                     kotlinx.coroutines.runBlocking {
                         val shouldLog = if (useSimulatedData) {
                             true
                         } else {
                             val lastLog = db.attentionLogDao().getLatestLog()
                             val lastLogTime = lastLog?.timestamp ?: 0L
-                            (now - lastLogTime) > 120000L // 2 minutes rate-limit
+                            // Write immediately if it is a genuine new alert, otherwise rate limit to 2 minutes
+                            isGenuineAlertTransition || (now - lastLogTime) > 120000L
                         }
 
                         if (shouldLog) {
@@ -420,7 +434,8 @@ class AttentionMonitoringService : Service() {
 
             onMetricsUpdated?.invoke(safeSession, safeScroll, safeSwitches, safeNight, safeSkip, apiScore, riskTier)
 
-            if (riskTier != prevRisk) {
+            // Trigger visual modal notifications only when cooldown conditions are met
+            if (isGenuineAlertTransition) {
                 onTriggerAlert?.invoke(riskTier, apiScore)
             }
         }

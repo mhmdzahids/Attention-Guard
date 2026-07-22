@@ -8,7 +8,7 @@ interface AttentionLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLog(log: AttentionLog)
 
-    @Query("SELECT * FROM attention_logs ORDER BY timestamp DESC")
+    @Query("SELECT * FROM attention_logs ORDER BY timestamp DESC LIMIT 150")
     fun getAllLogsFlow(): Flow<List<AttentionLog>>
 
     @Query("SELECT * FROM attention_logs ORDER BY timestamp DESC LIMIT 1")

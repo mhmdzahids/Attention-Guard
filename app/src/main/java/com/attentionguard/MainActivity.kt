@@ -129,19 +129,69 @@ fun MainAppScaffold() {
                 AlertLog(3, "08:30 PM 2 Days Ago", "Sustained Low-Risk State", "Attention Performance Indicator maintained stable cognitive load.", 0.24f, "low")
             )
         } else {
-            dbLogs.map { log ->
+            // Sort oldest first to correctly track state transitions chronologically
+            val sortedLogs = dbLogs.sortedBy { it.timestamp }
+            val alertEvents = mutableListOf<com.attentionguard.data.AttentionLog>()
+            var lastTier: String? = null
+            
+            for (log in sortedLogs) {
+                if (log.riskTier != lastTier) {
+                    // Only record alerts for transitions into Moderate or High risk
+                    if (log.riskTier != "low") {
+                        alertEvents.add(log)
+                    }
+                    lastTier = log.riskTier
+                }
+            }
+            
+            // Map newest first for the list display
+            alertEvents.reversed().map { log ->
                 val date = Date(log.timestamp)
                 val formattedDate = sdfTime.format(date)
                 
-                val title = when (log.riskTier) {
-                    "high" -> "High Attention Risk Detected"
-                    "moderate" -> "Late-Night Scroll Alert"
-                    else -> "Sustained Low-Risk State"
+                // Estimate dominant sensor signal contributing to the score
+                val contribSession = 0.30f * (log.sessionDuration / 8.0f).coerceIn(0f, 1f)
+                val contribScroll = 0.20f * (log.scrollVelocity / 250.0f).coerceIn(0f, 1f)
+                val contribSwitch = 0.30f * (log.taskSwitches / 20.0f).coerceIn(0f, 1f)
+                val contribNight = 0.20f * log.nightRatio.coerceIn(0f, 1f)
+                
+                val dominantSignal = listOf(
+                    "session" to contribSession,
+                    "scroll" to contribScroll,
+                    "switch" to contribSwitch,
+                    "night" to contribNight
+                ).maxByOrNull { it.second }?.first ?: "session"
+                
+                val title = if (log.riskTier == "high") {
+                    when (dominantSignal) {
+                        "night" -> "Severe Late-Night Doomscrolling"
+                        "switch" -> "Critical Task Fragmentation"
+                        "scroll" -> "Frantic Content Doomscrolling"
+                        else -> "Excessive App Exposure"
+                    }
+                } else {
+                    when (dominantSignal) {
+                        "night" -> "Late-Night Scroll Alert"
+                        "switch" -> "High Task-Switching Alert"
+                        "scroll" -> "Frantic Scroll Speed Alert"
+                        else -> "Prolonged Usage Alert"
+                    }
                 }
-                val desc = when (log.riskTier) {
-                    "high" -> "Severe pattern fragmentation detected across all passive behavior sensors."
-                    "moderate" -> "Interaction micro-behaviors indicate fast skipping under moderate cognitive load."
-                    else -> "Attention Performance Indicator maintained stable cognitive load."
+                
+                val desc = if (log.riskTier == "high") {
+                    when (dominantSignal) {
+                        "night" -> "Critical usage levels past midnight indicates high risk of sleep deprivation."
+                        "switch" -> "Severe application multitasking is causing extreme cognitive attention breakdown."
+                        "scroll" -> "Extremely high scroll velocity and content skip rate indicates severe dopamine seeking."
+                        else -> "Daily screen time for short-form content apps has reached dangerous thresholds."
+                    }
+                } else {
+                    when (dominantSignal) {
+                        "night" -> "High usage detected past midnight, disrupting healthy sleep patterns."
+                        "switch" -> "Frequent switching between apps indicates scattered attention and cognitive fatigue."
+                        "scroll" -> "Rapid and irregular scrolling velocity indicates search for instant dopamine gratification."
+                        else -> "Targeted app session duration has exceeded healthy daily wellbeing thresholds."
+                    }
                 }
                 
                 AlertLog(
