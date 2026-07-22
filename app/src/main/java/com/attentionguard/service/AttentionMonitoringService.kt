@@ -268,28 +268,35 @@ class AttentionMonitoringService : Service() {
         }
 
         fun updateCalculations(session: Float, scroll: Float, switches: Float, night: Float, skip: Float) {
-            currentSession = session
-            currentScroll = scroll
-            currentSwitches = switches
-            currentNight = night
-            currentSkip = skip
+            val safeSession = if (session.isNaN() || session.isInfinite()) 0f else session
+            val safeScroll = if (scroll.isNaN() || scroll.isInfinite()) 142f else scroll
+            val safeSwitches = if (switches.isNaN() || switches.isInfinite()) 0f else switches
+            val safeNight = if (night.isNaN() || night.isInfinite()) 0f else night
+            val safeSkip = if (skip.isNaN() || skip.isInfinite()) 0f else skip
+
+            currentSession = safeSession
+            currentScroll = safeScroll
+            currentSwitches = safeSwitches
+            currentNight = safeNight
+            currentSkip = safeSkip
 
             // For simulated mode, distribute session harian dynamically
             if (useSimulatedData) {
-                youtubeDuration = session * 0.40f
-                instagramDuration = session * 0.30f
-                tiktokDuration = session * 0.30f
+                youtubeDuration = safeSession * 0.40f
+                instagramDuration = safeSession * 0.30f
+                tiktokDuration = safeSession * 0.30f
             }
 
             // Normalizations (N(x))
-            val nSession = Math.min(1.0f, Math.max(0.0f, session / 8.0f))
-            val nScroll = Math.min(1.0f, Math.max(0.0f, scroll / 250.0f))
-            val nSwitch = Math.min(1.0f, Math.max(0.0f, switches / 20.0f))
-            val nNight = Math.min(1.0f, Math.max(0.0f, night))
+            val nSession = Math.min(1.0f, Math.max(0.0f, safeSession / 8.0f))
+            val nScroll = Math.min(1.0f, Math.max(0.0f, safeScroll / 250.0f))
+            val nSwitch = Math.min(1.0f, Math.max(0.0f, safeSwitches / 20.0f))
+            val nNight = Math.min(1.0f, Math.max(0.0f, safeNight))
 
             // Formula: API = (0.30 * N(session)) + (0.20 * N(scroll)) + (0.30 * N(switch)) + (0.20 * N(night))
             val rawScore = (0.30f * nSession) + (0.20f * nScroll) + (0.30f * nSwitch) + (0.20f * nNight)
-            apiScore = Math.round(rawScore * 100f) / 100f
+            val roundedScore = Math.round(rawScore * 100f) / 100f
+            apiScore = if (roundedScore.isNaN() || roundedScore.isInfinite()) 0f else roundedScore
 
             val prevRisk = riskTier
             riskTier = when {
@@ -298,7 +305,7 @@ class AttentionMonitoringService : Service() {
                 else -> "high"
             }
 
-            onMetricsUpdated?.invoke(session, scroll, switches, night, skip, apiScore, riskTier)
+            onMetricsUpdated?.invoke(safeSession, safeScroll, safeSwitches, safeNight, safeSkip, apiScore, riskTier)
 
             if (riskTier != prevRisk) {
                 onTriggerAlert?.invoke(riskTier, apiScore)

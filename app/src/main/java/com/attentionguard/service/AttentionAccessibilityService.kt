@@ -64,45 +64,54 @@ class AttentionAccessibilityService : AccessibilityService() {
         private var skipCount = 0
 
         fun getScrollVelocity(): Float {
-            return averageVelocity
+            return if (averageVelocity.isNaN() || averageVelocity.isInfinite()) 142f else averageVelocity
         }
 
         fun getSkipRate(): Float {
-            return if (scrollCount > 0) (skipCount.toFloat() / scrollCount.toFloat()) * 100f else 0f
+            val rate = if (scrollCount > 0) (skipCount.toFloat() / scrollCount.toFloat()) * 100f else 0f
+            return if (rate.isNaN() || rate.isInfinite()) 0f else rate
         }
 
         private fun trackScroll(y: Int, x: Int, time: Long, deltaY: Int, deltaX: Int) {
             val now = System.currentTimeMillis()
             val timeDeltaMs = now - lastScrollTime
             
-            // Calculate distance scrolled in pixels
+            // Calculate distance scrolled in pixels with Long to avoid integer overflow
             val distance = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && (deltaY != 0 || deltaX != 0)) {
-                Math.sqrt((deltaY * deltaY + deltaX * deltaX).toDouble()).toFloat()
+                val sum = (deltaY.toLong() * deltaY.toLong() + deltaX.toLong() * deltaX.toLong())
+                Math.sqrt(Math.max(0.0, sum.toDouble())).toFloat()
             } else {
                 if (lastScrollY != -1 && lastScrollX != -1) {
-                    val dy = y - lastScrollY
-                    val dx = x - lastScrollX
-                    Math.sqrt((dy * dy + dx * dx).toDouble()).toFloat()
+                    val dy = (y - lastScrollY).toLong()
+                    val dx = (x - lastScrollX).toLong()
+                    val sum = (dy * dy + dx * dx)
+                    Math.sqrt(Math.max(0.0, sum.toDouble())).toFloat()
                 } else {
                     0f
                 }
             }
+            
+            val safeDistance = if (distance.isNaN() || distance.isInfinite()) 0f else distance
             
             lastScrollY = y
             lastScrollX = x
             lastScrollTime = now
             
             if (timeDeltaMs in 1..3000) {
-                val velocityPxPerSec = (distance / (timeDeltaMs / 1000f))
+                val velocityPxPerSec = (safeDistance / (timeDeltaMs / 1000f))
                 // Apply a simple low-pass filter (exponential moving average) to smooth the velocity
-                currentVelocity = if (currentVelocity == 0.0f) velocityPxPerSec else (0.7f * currentVelocity + 0.3f * velocityPxPerSec)
+                currentVelocity = if (currentVelocity == 0.0f || currentVelocity.isNaN()) velocityPxPerSec else (0.7f * currentVelocity + 0.3f * velocityPxPerSec)
+                if (currentVelocity.isNaN() || currentVelocity.isInfinite()) {
+                    currentVelocity = 100f
+                }
                 
                 // Track cumulative average velocity for stability
                 velocityMeasurementsCount++
                 averageVelocity = if (velocityMeasurementsCount == 1) {
                     currentVelocity
                 } else {
-                    (averageVelocity * 0.95f) + (currentVelocity * 0.05f)
+                    val newAverage = (averageVelocity * 0.95f) + (currentVelocity * 0.05f)
+                    if (newAverage.isNaN() || newAverage.isInfinite()) 142f else newAverage
                 }
             } else {
                 // If there's a long gap, reset current velocity but keep average stable
@@ -111,7 +120,7 @@ class AttentionAccessibilityService : AccessibilityService() {
             
             scrollCount++
             // If the user scrolls a large distance (>200px) in a single event, increment skip count
-            if (distance > 200f) {
+            if (safeDistance > 200f) {
                 skipCount++
             }
         }

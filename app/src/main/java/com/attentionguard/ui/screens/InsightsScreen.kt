@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.attentionguard.ui.theme.*
 import kotlinx.coroutines.launch
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.ui.layout.layout
 
 data class ChartPoint(val label: String, val value: Float)
 
@@ -55,6 +58,7 @@ fun InsightsScreen(
     var currentRenderType by remember { mutableStateOf("hourly") }
     val chartProgress = remember { Animatable(0f) }
     val coroutineScope = rememberCoroutineScope()
+    var chartScale by remember { mutableStateOf(1f) }
 
     // Smoothly rise chart on first load
     LaunchedEffect(Unit) {
@@ -98,11 +102,16 @@ fun InsightsScreen(
             }
         }
     }
-    
-    val peakIndex = remember(hourlyPoints) {
-        hourlyPoints.take(8).indices.maxByOrNull { hourlyPoints[it] } ?: 6
+
+    val currentHour = remember { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
+    val visibleHoursCount = remember(currentHour) {
+        Math.max(1, hoursList.filter { it <= currentHour }.size)
     }
-    val peakHoursList = listOf("12:00 AM", "03:00 AM", "06:00 AM", "09:00 AM", "12:00 PM", "03:00 PM", "06:00 PM", "09:00 PM")
+    
+    val peakIndex = remember(hourlyPoints, visibleHoursCount) {
+        hourlyPoints.take(visibleHoursCount).indices.maxByOrNull { hourlyPoints[it] } ?: 0
+    }
+    val peakHoursList = listOf("12:00 AM", "03:00 AM", "06:00 AM", "09:00 AM", "12:00 PM", "03:00 PM", "06:00 PM", "09:00 PM", "12:00 AM")
     val peakHourText = peakHoursList[peakIndex]
 
     // 2. Prepare Weekly Data (Day by Day)
@@ -235,6 +244,7 @@ fun InsightsScreen(
                                                     // 2. Swap render types at flat level
                                                     chartType = type
                                                     currentRenderType = type
+                                                    chartScale = 1f // Reset scale on switch
                                                     // 3. Smoothly rise new chart up
                                                     chartProgress.animateTo(
                                                         targetValue = 1f,
@@ -261,129 +271,258 @@ fun InsightsScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    Box(
+                    val scrollStateChart = rememberScrollState()
+
+                    BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(150.dp)
+                            .pointerInput(Unit) {
+                                detectTransformGestures { _, _, zoom, _ ->
+                                    chartScale = (chartScale * zoom).coerceIn(1f, 3.5f)
+                                }
+                            }
                     ) {
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val w = size.width
-                            val h = size.height
+                        val availableWidth = maxWidth - 44.dp
+                        val chartWidth = availableWidth * chartScale
 
-                            drawLine(
-                                color = HairlineSoft,
-                                start = Offset(0f, h),
-                                end = Offset(w, h),
-                                strokeWidth = 2f
-                            )
-                            drawLine(
-                                color = SurfaceSoft,
-                                start = Offset(0f, h / 2f),
-                                end = Offset(w, h / 2f),
-                                strokeWidth = 2f,
-                                pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
-                            )
-
-                            val themeColor = when (riskTier) {
-                                "low" -> RiskLow
-                                "moderate" -> RiskModerate
-                                else -> RiskHigh
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Y Labels Column (Fixed width)
+                            Column(
+                                modifier = Modifier
+                                    .height(150.dp)
+                                    .width(36.dp)
+                                    .padding(vertical = 4.dp),
+                                verticalArrangement = Arrangement.SpaceBetween,
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                if (currentRenderType == "hourly") {
+                                    Text("High", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SecondaryGray)
+                                    Text("Mod", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SecondaryGray)
+                                    Text("Low", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SecondaryGray)
+                                } else {
+                                    Text("8.0h", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SecondaryGray)
+                                    Text("4.0h", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SecondaryGray)
+                                    Text("0.0h", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = SecondaryGray)
+                                }
                             }
 
-                            if (currentRenderType == "hourly") {
-                                val points = hourlyPoints.mapIndexed { index, valRaw ->
-                                    Offset(index * w / 8f, h - (valRaw * h * chartProgress.value))
-                                }
-                                
-                                val path = Path().apply {
-                                    moveTo(points[0].x, points[0].y)
-                                    for (i in 0 until points.size - 1) {
-                                        val pStart = points[i]
-                                        val pEnd = points[i + 1]
-                                        val controlX = (pStart.x + pEnd.x) / 2f
-                                        cubicTo(controlX, pStart.y, controlX, pEnd.y, pEnd.x, pEnd.y)
+                            // Scrollable area for the Graph Canvas & X Labels
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .horizontalScroll(scrollStateChart, enabled = chartScale > 1f)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(chartWidth)
+                                        .height(150.dp)
+                                ) {
+                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                        val w = size.width
+                                        val h = size.height
+
+                                        // Horizontal gridlines aligning with the Y Labels
+                                        // Bottom line (Low / 0.0)
+                                        drawLine(
+                                            color = HairlineSoft,
+                                            start = Offset(0f, h),
+                                            end = Offset(w, h),
+                                            strokeWidth = 2f
+                                        )
+                                        // Middle line (Mod / 4.0)
+                                        drawLine(
+                                            color = SurfaceSoft,
+                                            start = Offset(0f, h / 2f),
+                                            end = Offset(w, h / 2f),
+                                            strokeWidth = 2f,
+                                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
+                                        )
+                                        // Top line (High / 8.0)
+                                        drawLine(
+                                            color = SurfaceSoft,
+                                            start = Offset(0f, 0f),
+                                            end = Offset(w, 0f),
+                                            strokeWidth = 2f,
+                                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f))
+                                        )
+
+                                        val themeColor = when (riskTier) {
+                                            "low" -> RiskLow
+                                            "moderate" -> RiskModerate
+                                            else -> RiskHigh
+                                        }
+
+                                        if (currentRenderType == "hourly") {
+                                            // Scale X dynamically based on visibleHoursCount so the last visible hour sits at the rightmost edge w
+                                            val points = hourlyPoints.take(visibleHoursCount).mapIndexed { index, valRaw ->
+                                                val x = if (visibleHoursCount > 1) {
+                                                    index * w / (visibleHoursCount - 1).toFloat()
+                                                } else {
+                                                    w / 2f
+                                                }
+                                                Offset(x, h - (valRaw * h * chartProgress.value))
+                                            }
+
+                                            if (points.isNotEmpty()) {
+                                                val path = Path().apply {
+                                                    moveTo(points[0].x, points[0].y)
+                                                    for (i in 0 until points.size - 1) {
+                                                        val pStart = points[i]
+                                                        val pEnd = points[i + 1]
+                                                        val controlX = (pStart.x + pEnd.x) / 2f
+                                                        cubicTo(controlX, pStart.y, controlX, pEnd.y, pEnd.x, pEnd.y)
+                                                    }
+                                                }
+
+                                                drawPath(
+                                                    path = path,
+                                                    color = themeColor,
+                                                    style = Stroke(width = 8f, cap = StrokeCap.Round)
+                                                )
+
+                                                val areaPath = Path().apply {
+                                                    addPath(path)
+                                                    lineTo(points.last().x, h)
+                                                    lineTo(points.first().x, h)
+                                                    close()
+                                                }
+
+                                                drawPath(
+                                                    path = areaPath,
+                                                    brush = Brush.verticalGradient(
+                                                        colors = listOf(themeColor.copy(alpha = 0.25f * chartProgress.value), Color.Transparent)
+                                                    )
+                                                )
+
+                                                // Draw highlight indicator only if it's within visible points range
+                                                if (peakIndex < points.size) {
+                                                    val highlightX = if (visibleHoursCount > 1) {
+                                                        peakIndex * w / (visibleHoursCount - 1).toFloat()
+                                                    } else {
+                                                        w / 2f
+                                                    }
+                                                    val highlightY = h - (hourlyPoints[peakIndex] * h * chartProgress.value)
+                                                    drawCircle(
+                                                        color = themeColor,
+                                                        radius = 15f * chartProgress.value,
+                                                        center = Offset(highlightX, highlightY),
+                                                        style = Stroke(width = 4f * chartProgress.value)
+                                                    )
+                                                    drawCircle(
+                                                        color = themeColor,
+                                                        radius = 6f * chartProgress.value,
+                                                        center = Offset(highlightX, highlightY)
+                                                    )
+                                                }
+                                            }
+                                        } else {
+                                            val numBars = weeklyPoints.size
+                                            val barWidth = w / (numBars * 1.8f - 0.8f)
+                                            val spacing = barWidth * 0.8f
+                                            val maxVal = 8.0f 
+
+                                            for (i in 0 until numBars) {
+                                                val x = i * (barWidth + spacing)
+                                                val barVal = weeklyPoints[i].value
+                                                val barH = Math.max(12f, (barVal / maxVal) * h) * chartProgress.value
+                                                val y = h - barH
+                                                
+                                                val barColor = if (barVal >= 5.0f) RiskHigh else if (barVal >= 2.8f) RiskModerate else CommerceCobalt
+                                                
+                                                drawRoundRect(
+                                                    color = barColor,
+                                                    topLeft = Offset(x, y),
+                                                    size = androidx.compose.ui.geometry.Size(barWidth, barH),
+                                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
 
-                                drawPath(
-                                    path = path,
-                                    color = themeColor,
-                                    style = Stroke(width = 8f, cap = StrokeCap.Round)
-                                )
+                                Spacer(modifier = Modifier.height(6.dp))
 
-                                val areaPath = Path().apply {
-                                    addPath(path)
-                                    lineTo(w, h)
-                                    lineTo(0f, h)
-                                    close()
+                                // X Labels Row placed in custom offsets to match the graph points
+                                Box(
+                                    modifier = Modifier
+                                        .width(chartWidth)
+                                        .padding(top = 4.dp)
+                                ) {
+                                    if (currentRenderType == "hourly") {
+                                        val formatHourLabel: (Int) -> String = { hourVal ->
+                                            when {
+                                                hourVal == 0 -> "12 AM"
+                                                hourVal == 12 -> "12 PM"
+                                                hourVal == 24 -> "12 AM"
+                                                hourVal > 12 -> "${hourVal - 12} PM"
+                                                else -> "$hourVal AM"
+                                            }
+                                        }
+                                        val visibleHours = hoursList.take(visibleHoursCount)
+                                        
+                                        // Zoomed: show all visible indices. Unzoomed: show even indices and the last index.
+                                        val labelList = if (chartScale > 1.5f) {
+                                            visibleHours.mapIndexed { index, hour -> index to formatHourLabel(hour) }
+                                        } else {
+                                            visibleHours.mapIndexedNotNull { index, hour ->
+                                                if (index % 2 == 0 || index == visibleHoursCount - 1) {
+                                                    index to formatHourLabel(hour)
+                                                } else {
+                                                    null
+                                                }
+                                            }
+                                        }
+
+                                        labelList.forEach { (index, time) ->
+                                            Text(
+                                                text = time,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = SecondaryGray,
+                                                modifier = Modifier.layout { measurable, constraints ->
+                                                    val placeable = measurable.measure(constraints)
+                                                    layout(placeable.width, placeable.height) {
+                                                        // Center label under its graph point
+                                                        val wPx = chartWidth.toPx()
+                                                        val xPos = if (visibleHoursCount > 1) {
+                                                            (index * (wPx / (visibleHoursCount - 1).toFloat())) - (placeable.width / 2f)
+                                                        } else {
+                                                            (wPx / 2f) - (placeable.width / 2f)
+                                                        }
+                                                        val clampedX = xPos.coerceIn(0f, wPx - placeable.width)
+                                                        placeable.placeRelative(clampedX.toInt(), 0)
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    } else {
+                                        val numBars = weeklyPoints.size
+                                        weeklyPoints.forEachIndexed { index, point ->
+                                            Text(
+                                                text = point.label,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = SecondaryGray,
+                                                modifier = Modifier.layout { measurable, constraints ->
+                                                    val placeable = measurable.measure(constraints)
+                                                    layout(placeable.width, placeable.height) {
+                                                        val wPx = chartWidth.toPx()
+                                                        val barWidth = wPx / (numBars * 1.8f - 0.8f)
+                                                        val spacing = barWidth * 0.8f
+                                                        val x = index * (barWidth + spacing)
+                                                        val center = x + barWidth / 2f
+                                                        val xPos = center - (placeable.width / 2f)
+                                                        val clampedX = xPos.coerceIn(0f, wPx - placeable.width)
+                                                        placeable.placeRelative(clampedX.toInt(), 0)
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
                                 }
-
-                                drawPath(
-                                    path = areaPath,
-                                    brush = Brush.verticalGradient(
-                                        colors = listOf(themeColor.copy(alpha = 0.25f * chartProgress.value), Color.Transparent)
-                                    )
-                                )
-
-                                val highlightX = peakIndex * w / 8f
-                                val highlightY = h - (hourlyPoints[peakIndex] * h * chartProgress.value)
-                                drawCircle(
-                                    color = themeColor,
-                                    radius = 15f * chartProgress.value,
-                                    center = Offset(highlightX, highlightY),
-                                    style = Stroke(width = 4f * chartProgress.value)
-                                )
-                                drawCircle(
-                                    color = themeColor,
-                                    radius = 6f * chartProgress.value,
-                                    center = Offset(highlightX, highlightY)
-                                )
-                            } else {
-                                val numBars = weeklyPoints.size
-                                val barWidth = w / (numBars * 1.8f - 0.8f)
-                                val spacing = barWidth * 0.8f
-                                val maxVal = 8.0f 
-
-                                for (i in 0 until numBars) {
-                                    val x = i * (barWidth + spacing)
-                                    val barVal = weeklyPoints[i].value
-                                    val barH = Math.max(12f, (barVal / maxVal) * h) * chartProgress.value
-                                    val y = h - barH
-                                    
-                                    val barColor = if (barVal >= 5.0f) RiskHigh else if (barVal >= 2.8f) RiskModerate else CommerceCobalt
-                                    
-                                    drawRoundRect(
-                                        color = barColor,
-                                        topLeft = Offset(x, y),
-                                        size = androidx.compose.ui.geometry.Size(barWidth, barH),
-                                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = if (currentRenderType == "hourly") Arrangement.SpaceBetween else Arrangement.SpaceAround
-                    ) {
-                        if (currentRenderType == "hourly") {
-                            listOf("12 AM", "6 AM", "12 PM", "6 PM", "12 AM").forEach { time ->
-                                Text(
-                                    text = time,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SecondaryGray
-                                )
-                            }
-                        } else {
-                            weeklyPoints.forEach { point ->
-                                Text(
-                                    text = point.label,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = SecondaryGray
-                                )
                             }
                         }
                     }
@@ -394,28 +533,41 @@ fun InsightsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(100.dp),
-                            color = SurfaceSoft,
-                            modifier = Modifier.padding(vertical = 4.dp)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Text(
-                                text = if (useSimulatedData) {
-                                    "Source: Simulated Data Mode"
-                                } else {
-                                    if (currentRenderType == "hourly") {
-                                        if (todayLogs.isEmpty()) "Source: Circadian Baseline (No logs)" 
-                                        else "Source: Real-world Database (${todayLogs.size} logs today)"
+                            Surface(
+                                shape = RoundedCornerShape(100.dp),
+                                color = SurfaceSoft,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = if (useSimulatedData) {
+                                        "Source: Simulated Data Mode"
                                     } else {
-                                        val dbLogsInWeek = dbLogs.filter { it.timestamp >= System.currentTimeMillis() - 7 * 86400000L }
-                                        if (dbLogsInWeek.isEmpty()) "Source: Estimated Weekly Baseline"
-                                        else "Source: Real-world Database (${dbLogsInWeek.size} logs this week)"
-                                    }
-                                },
-                                color = SecondaryGray,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
+                                        if (currentRenderType == "hourly") {
+                                            if (todayLogs.isEmpty()) "Source: Circadian Baseline (No logs)" 
+                                            else "Source: Real-world Database (${todayLogs.size} logs today)"
+                                        } else {
+                                            val dbLogsInWeek = dbLogs.filter { it.timestamp >= System.currentTimeMillis() - 7 * 86400000L }
+                                            if (dbLogsInWeek.isEmpty()) "Source: Estimated Weekly Baseline"
+                                            else "Source: Real-world Database (${dbLogsInWeek.size} logs this week)"
+                                        }
+                                    },
+                                    color = SecondaryGray,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            
+                            // User visual hint for pinch gesture
+                            Text(
+                                text = "💡 Tip: Pinch graph to zoom & view detailed hour information",
+                                color = SecondaryGray.copy(alpha = 0.8f),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }

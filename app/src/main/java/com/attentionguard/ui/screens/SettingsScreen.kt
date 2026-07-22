@@ -329,6 +329,15 @@ fun SliderItem(
     enabled: Boolean = true,
     onValueChange: (Float) -> Unit
 ) {
+    // Sanitize value to prevent NaN crash and ensure it lies within range bounds
+    val safeValue = remember(value, range) {
+        if (value.isNaN() || value.isInfinite()) {
+            range.start
+        } else {
+            value.coerceIn(range.start, range.endInclusive)
+        }
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -339,7 +348,7 @@ fun SliderItem(
             Text(text = valueLabel, fontSize = 12.sp, color = if (enabled) CommerceCobalt else SecondaryGray, fontWeight = FontWeight.Bold)
         }
         Slider(
-            value = value,
+            value = safeValue,
             valueRange = range,
             enabled = enabled,
             onValueChange = onValueChange,
