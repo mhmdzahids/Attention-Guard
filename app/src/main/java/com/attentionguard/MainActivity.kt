@@ -129,23 +129,9 @@ fun MainAppScaffold() {
                 AlertLog(3, "08:30 PM 2 Days Ago", "Sustained Low-Risk State", "Attention Performance Indicator maintained stable cognitive load.", 0.24f, "low")
             )
         } else {
-            // Sort oldest first to correctly track state transitions chronologically
-            val sortedLogs = dbLogs.sortedBy { it.timestamp }
-            val alertEvents = mutableListOf<com.attentionguard.data.AttentionLog>()
-            var lastTier: String? = null
+            val alertEvents = dbLogs.filter { it.isAlertEvent }
             
-            for (log in sortedLogs) {
-                if (log.riskTier != lastTier) {
-                    // Only record alerts for transitions into Moderate or High risk
-                    if (log.riskTier != "low") {
-                        alertEvents.add(log)
-                    }
-                    lastTier = log.riskTier
-                }
-            }
-            
-            // Map newest first for the list display
-            alertEvents.reversed().map { log ->
+            alertEvents.map { log ->
                 val date = Date(log.timestamp)
                 val formattedDate = sdfTime.format(date)
                 

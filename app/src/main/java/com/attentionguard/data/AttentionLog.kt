@@ -13,5 +13,6 @@ data class AttentionLog(
     @ColumnInfo(name = "task_switches") val taskSwitches: Float,
     @ColumnInfo(name = "night_ratio") val nightRatio: Float,
     @ColumnInfo(name = "api_score") val apiScore: Float,
-    @ColumnInfo(name = "risk_tier") val riskTier: String
+    @ColumnInfo(name = "risk_tier") val riskTier: String,
+    @ColumnInfo(name = "is_alert_event", defaultValue = "0") val isAlertEvent: Boolean = false
 )

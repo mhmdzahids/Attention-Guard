@@ -422,7 +422,8 @@ class AttentionMonitoringService : Service() {
                                 taskSwitches = safeSwitches,
                                 nightRatio = safeNight,
                                 apiScore = apiScore,
-                                riskTier = riskTier
+                                riskTier = riskTier,
+                                isAlertEvent = isGenuineAlertTransition
                             )
                             db.attentionLogDao().insertLog(log)
                         }
