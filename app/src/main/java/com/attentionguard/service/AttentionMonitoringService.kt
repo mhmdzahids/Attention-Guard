@@ -110,6 +110,25 @@ class AttentionMonitoringService : Service() {
         var riskTier = "moderate"
         private var lastAlertTime = 0L
         private var lastAlertRisk: String? = null
+        private var lastCalculationDay = -1
+
+        private fun checkAndResetAtMidnight() {
+            val cal = Calendar.getInstance()
+            val currentDay = cal.get(Calendar.DAY_OF_YEAR)
+            if (lastCalculationDay != -1 && currentDay != lastCalculationDay) {
+                currentSession = 0f
+                currentScroll = 0f
+                currentSwitches = 0f
+                currentNight = 0f
+                currentSkip = 0f
+                youtubeDuration = 0f
+                instagramDuration = 0f
+                tiktokDuration = 0f
+                apiScore = 0f
+                riskTier = "low"
+            }
+            lastCalculationDay = currentDay
+        }
 
         // Current real-world or simulated metric values
         var currentSession = 2.5f
@@ -203,6 +222,8 @@ class AttentionMonitoringService : Service() {
             calendar.set(Calendar.MILLISECOND, 0)
             val startTime = calendar.timeInMillis
 
+            val maxPossibleMs = endTime - startTime
+
             // 1. Get exact durations from aggregated UsageStats (matches Digital Wellbeing)
             var totalDailyMs = 0L
             var youtubeMs = 0L
@@ -212,7 +233,7 @@ class AttentionMonitoringService : Service() {
             val dailyStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
             for ((pkg, stat) in dailyStats) {
                 val canonicalPkg = getCanonicalPackageName(pkg)
-                val timeInFg = stat.totalTimeInForeground
+                val timeInFg = Math.min(stat.totalTimeInForeground, maxPossibleMs)
                 if (timeInFg > 0L) {
                     when (canonicalPkg) {
                         "com.google.android.youtube" -> youtubeMs += timeInFg
@@ -318,6 +339,7 @@ class AttentionMonitoringService : Service() {
         }
 
         fun updateCalculations(context: Context, session: Float, scroll: Float, switches: Float, night: Float, skip: Float) {
+            checkAndResetAtMidnight()
             val safeSession = if (session.isNaN() || session.isInfinite()) 0f else session
             val safeScroll = if (scroll.isNaN() || scroll.isInfinite()) 142f else scroll
             val safeSwitches = if (switches.isNaN() || switches.isInfinite()) 0f else switches

@@ -130,6 +130,17 @@ Hari ini telah diselesaikan serangkaian optimalisasi kode dan perbaikan bug arsi
     *   Mengganti teks status dengan tulisan bold warna biru: "High/Normal usage after 12:00 AM" bersanding dengan ikon bulan sabit.
     *   Memperbesar ukuran donut progress chart menjadi `64.dp` dengan tebal stroke `12f` agar kontras dan terbaca jelas.
 
+#### 🕒 Pukul 00:07 - 00:09 WIB | Perbaikan Logika Midnight Reset (Garis Grafik, Session Dynamics, & UsageStats)
+*   **Masalah**:
+    1.  *Stale Session Dynamics*: Saat melintasi pukul 00:00, visualisasi Session Dynamics tetap menampilkan durasi penggunaan kemarin (stale data).
+    2.  *Leak Grafik Sumbu X*: Grafik hourly memunculkan sisa grafik/peak dari hari kemarin bukannya bersih/mulai baru dari tepi kiri.
+    3.  *Cross-Midnight Usage Stats*: Sesi foreground yang aktif melintasi tengah malam terbawa ke total catatan harian baru.
+*   **Perbaikan**:
+    *   **Pembatasan Durasi UsageStats**: Menambahkan pembatasan durasi riil `timeInFg` di `queryMetricsDirectly` dengan waktu maksimal yang sudah berjalan hari ini (`endTime - startTime`) agar durasi kemarin tidak bocor/terbawa.
+    *   **Reset State di Service**: Menambahkan pendeteksi perubahan hari `lastCalculationDay` di [AttentionMonitoringService.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/service/AttentionMonitoringService.kt) untuk me-reset semua variabel statis ke `0f` seketika saat pergantian hari.
+    *   **Peremajaan todayStart & Logs**: Mengubah cache `todayStart` dan `todayLogs` di [InsightsScreen.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/ui/screens/InsightsScreen.kt) agar dihitung ulang setiap detik (berbasis `liveTimeMs`) dan mengembalikan nilai fallback `0f` ketika data hari ini masih kosong.
+    *   **Viewport Grafik Dinamis**: Mengubah batas minimal sumbu X grafik `chartStart` menjadi `todayStart` dan merubah rumusan koordinat Canvas agar memetakan titik data hari ini dari tepi kiri ($X = 0$). Grafik otomatis bersih dan mulai dari tepi kiri di pukul 00:00.
+
 ---
 
 ## 3. Hal-hal yang Dapat Disempurnakan di Masa Mendatang (Future Improvements)

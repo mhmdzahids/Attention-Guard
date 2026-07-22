@@ -58,6 +58,14 @@ fun InsightsScreen(
 ) {
     val scrollState = rememberScrollState()
     
+    var liveTimeMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            liveTimeMs = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1000L)
+        }
+    }
+    
     // Active chart type state
     var chartType by remember { mutableStateOf("hourly") }
     var currentRenderType by remember { mutableStateOf("hourly") }
@@ -77,16 +85,18 @@ fun InsightsScreen(
     }
     
     // 1. Prepare Hourly Data (Hour of Day)
-    val todayStart = remember {
-        val cal = java.util.Calendar.getInstance()
-        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
-        cal.set(java.util.Calendar.MINUTE, 0)
-        cal.set(java.util.Calendar.SECOND, 0)
-        cal.set(java.util.Calendar.MILLISECOND, 0)
+    val todayStart = remember(liveTimeMs) {
+        val cal = java.util.Calendar.getInstance().apply {
+            timeInMillis = liveTimeMs
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
         cal.timeInMillis
     }
     
-    val todayLogs = remember(dbLogs) {
+    val todayLogs = remember(dbLogs, todayStart) {
         dbLogs.filter { it.timestamp >= todayStart }
     }
 
@@ -96,20 +106,28 @@ fun InsightsScreen(
     }
 
     val activeSessionDuration = remember(todayLogs, sessionDuration, useSimulatedData) {
-        if (!useSimulatedData && todayLogs.isNotEmpty()) {
-            todayLogs.map { it.sessionDuration }.average().toFloat()
+        if (!useSimulatedData) {
+            if (todayLogs.isNotEmpty()) {
+                todayLogs.map { it.sessionDuration }.average().toFloat()
+            } else {
+                0f
+            }
         } else {
             sessionDuration
         }
     }
 
     val activeScrollVelocity = remember(todayLogs, scrollVelocity, useSimulatedData) {
-        if (!useSimulatedData && todayLogs.isNotEmpty()) {
-            val validLogs = todayLogs.filter { it.scrollVelocity in 0f..1000f }
-            if (validLogs.isNotEmpty()) {
-                validLogs.map { it.scrollVelocity }.average().toFloat()
+        if (!useSimulatedData) {
+            if (todayLogs.isNotEmpty()) {
+                val validLogs = todayLogs.filter { it.scrollVelocity in 0f..1000f }
+                if (validLogs.isNotEmpty()) {
+                    validLogs.map { it.scrollVelocity }.average().toFloat()
+                } else {
+                    0f
+                }
             } else {
-                scrollVelocity
+                0f
             }
         } else {
             scrollVelocity
@@ -117,24 +135,36 @@ fun InsightsScreen(
     }
 
     val activeSwitchFreq = remember(todayLogs, switchFreq, useSimulatedData) {
-        if (!useSimulatedData && todayLogs.isNotEmpty()) {
-            todayLogs.map { it.taskSwitches }.average().toFloat()
+        if (!useSimulatedData) {
+            if (todayLogs.isNotEmpty()) {
+                todayLogs.map { it.taskSwitches }.average().toFloat()
+            } else {
+                0f
+            }
         } else {
             switchFreq
         }
     }
 
     val activeNightRatio = remember(todayLogs, nightRatio, useSimulatedData) {
-        if (!useSimulatedData && todayLogs.isNotEmpty()) {
-            todayLogs.map { it.nightRatio }.average().toFloat()
+        if (!useSimulatedData) {
+            if (todayLogs.isNotEmpty()) {
+                todayLogs.map { it.nightRatio }.average().toFloat()
+            } else {
+                0f
+            }
         } else {
             nightRatio
         }
     }
 
     val activeApiScore = remember(todayLogs, apiScore, useSimulatedData) {
-        if (!useSimulatedData && todayLogs.isNotEmpty()) {
-            latestLog?.apiScore ?: apiScore
+        if (!useSimulatedData) {
+            if (todayLogs.isNotEmpty()) {
+                latestLog?.apiScore ?: 0f
+            } else {
+                0f
+            }
         } else {
             apiScore
         }
@@ -171,30 +201,28 @@ fun InsightsScreen(
     val hourlyBaseline = listOf(0.45f, 0.25f, 0.15f, 0.45f, 0.58f, 0.42f, 0.65f, 0.52f, 0.45f)
     val scaleFactor = if (activeApiScore > 0f) activeApiScore / 0.52f else 1f
     
-    var liveTimeMs by remember { mutableStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            liveTimeMs = System.currentTimeMillis()
-            kotlinx.coroutines.delay(1000L)
-        }
-    }
 
 
-    // Group logs in a continuous 24-hour sliding window based on timestamps, blending in interpolated baseline fallbacks
-    val hourlyTimestampedPoints = remember(dbLogs, scaleFactor, liveTimeMs) {
+
+    // Group logs in a continuous 24-hour sliding window based on timestamps, blending in interpolated baseline fallbacks, bounded by todayStart
+    val hourlyTimestampedPoints = remember(dbLogs, scaleFactor, liveTimeMs, todayStart) {
         val totalDuration = 24 * 3600000L
         val step = 30 * 60000L // 30 minutes interval for smooth interpolation
-        val startTime = liveTimeMs - totalDuration
         
-        (0..48).map { i ->
-            val t = startTime + i * step
-            
-            // Find closest log within 15 minutes of the step timestamp
+        // Bounded start time: cannot go earlier than todayStart
+        val startTime = Math.max(liveTimeMs - totalDuration, todayStart)
+        val duration = Math.max(1000L, liveTimeMs - startTime)
+        val numSteps = (duration / step).toInt()
+        
+        val list = mutableListOf<TimestampedPoint>()
+        
+        // Helper to query score at specific timestamp
+        val getScoreAtTime = { t: Long ->
             val closestLog = dbLogs.filter { log ->
-                Math.abs(log.timestamp - t) <= 15 * 60000L
+                log.timestamp >= todayStart && Math.abs(log.timestamp - t) <= 15 * 60000L
             }.minByOrNull { Math.abs(it.timestamp - t) }
             
-            val score = if (closestLog != null) {
+            if (closestLog != null) {
                 closestLog.apiScore
             } else {
                 val cal = java.util.Calendar.getInstance().apply { timeInMillis = t }
@@ -205,9 +233,30 @@ fun InsightsScreen(
                 val interpolatedBaseline = hourlyBaseline[lowIndex] * (1f - fraction) + hourlyBaseline[highIndex] * fraction
                 Math.min(1.0f, interpolatedBaseline * scaleFactor)
             }
-            
-            TimestampedPoint(t, score)
         }
+        
+        // Add start point
+        list.add(TimestampedPoint(startTime, getScoreAtTime(startTime)))
+        
+        // Add intermediate steps
+        for (i in 1..numSteps) {
+            val t = startTime + i * step
+            if (t < liveTimeMs) {
+                list.add(TimestampedPoint(t, getScoreAtTime(t)))
+            }
+        }
+        
+        // Add end point
+        list.add(TimestampedPoint(liveTimeMs, getScoreAtTime(liveTimeMs)))
+        list
+    }
+
+    val chartStart = remember(liveTimeMs, todayStart) {
+        Math.max(liveTimeMs - 24 * 3600000L, todayStart)
+    }
+    val chartEnd = liveTimeMs
+    val chartDuration = remember(chartStart, chartEnd) {
+        Math.max(1000L, chartEnd - chartStart)
     }
 
     val peakTimestampedPoint = remember(hourlyTimestampedPoints) {
@@ -473,8 +522,11 @@ fun InsightsScreen(
 
                                         if (currentRenderType == "hourly") {
                                             val points = hourlyTimestampedPoints.map { pt ->
-                                                val timeDiff = liveTimeMs - pt.timestamp
-                                                val x = w - (timeDiff.toFloat() / 86400000f * w)
+                                                val x = if (chartDuration > 0L) {
+                                                    (pt.timestamp - chartStart).toFloat() / chartDuration.toFloat() * w
+                                                } else {
+                                                    0f
+                                                }
                                                 Offset(x, h - (pt.value * h * chartProgress.value))
                                             }
 
@@ -510,8 +562,11 @@ fun InsightsScreen(
                                                 )
 
                                                 if (peakTimestampedPoint != null) {
-                                                     val timeDiff = liveTimeMs - peakTimestampedPoint.timestamp
-                                                     val highlightX = w - (timeDiff.toFloat() / 86400000f * w)
+                                                     val highlightX = if (chartDuration > 0L) {
+                                                         (peakTimestampedPoint.timestamp - chartStart).toFloat() / chartDuration.toFloat() * w
+                                                     } else {
+                                                         0f
+                                                     }
                                                      val highlightY = h - (peakTimestampedPoint.value * h * chartProgress.value)
                                                      if (highlightX in 0f..w) {
                                                          drawCircle(
@@ -564,9 +619,8 @@ fun InsightsScreen(
                                     if (currentRenderType == "hourly") {
                                         // Dynamic continuous X labels drift & fade-in/fade-out
                                         val labelStep = if (chartScale > 1.5f) 3 else 6
-                                        val hourMarks = remember(liveTimeMs, labelStep) {
-                                            val totalDuration = 24 * 3600000L
-                                            val startTime = liveTimeMs - totalDuration
+                                        val hourMarks = remember(liveTimeMs, labelStep, chartStart) {
+                                            val startTime = chartStart
                                             val marks = mutableListOf<Pair<Long, String>>()
                                             
                                             val cal = java.util.Calendar.getInstance().apply {
@@ -597,10 +651,13 @@ fun InsightsScreen(
                                         }
 
                                         hourMarks.forEach { (timestamp, time) ->
-                                            val timeDiff = liveTimeMs - timestamp
-                                            val rawXFraction = timeDiff.toFloat() / 86400000f
+                                            val rawXFraction = if (chartDuration > 0L) {
+                                                (timestamp - chartStart).toFloat() / chartDuration.toFloat()
+                                            } else {
+                                                0f
+                                            }
                                             
-                                            val xPosDp = chartWidth - (chartWidth * rawXFraction)
+                                            val xPosDp = chartWidth * rawXFraction
                                             val boundaryThresholdDp = 36.dp
                                             
                                             val alpha = when {
@@ -620,7 +677,7 @@ fun InsightsScreen(
                                                         val placeable = measurable.measure(constraints)
                                                         layout(placeable.width, placeable.height) {
                                                             val wPx = chartWidth.toPx()
-                                                            val xPos = wPx - (rawXFraction * wPx) - (placeable.width / 2f)
+                                                            val xPos = (rawXFraction * wPx) - (placeable.width / 2f)
                                                             placeable.placeRelative(xPos.toInt(), 0)
                                                         }
                                                     }
