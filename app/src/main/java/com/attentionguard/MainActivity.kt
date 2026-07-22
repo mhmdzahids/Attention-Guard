@@ -1,6 +1,9 @@
 package com.attentionguard
 
 import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import android.widget.Toast
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -92,6 +95,27 @@ fun MainAppScaffold() {
     val dbLogs by database.attentionLogDao().getAllLogsFlow().collectAsState(initial = emptyList())
     
     var useSimulatedData by remember { mutableStateOf(AttentionMonitoringService.useSimulatedData) }
+    
+    var isAccessibilityGranted by remember {
+        mutableStateOf(PermissionChecker.isAccessibilityServiceEnabled(context))
+    }
+    var isOverlayGranted by remember {
+        mutableStateOf(PermissionChecker.isOverlayPermissionGranted(context))
+    }
+
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                isAccessibilityGranted = PermissionChecker.isAccessibilityServiceEnabled(context)
+                isOverlayGranted = PermissionChecker.isOverlayPermissionGranted(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     
     // Behaviors State
     var sessionDuration by remember { mutableStateOf(2.5f) }
@@ -274,6 +298,12 @@ fun MainAppScaffold() {
         isTiktokInstalled = true
     }
 
+    LaunchedEffect(useSimulatedData) {
+        if (useSimulatedData) {
+            onSignalChanged()
+        }
+    }
+
     val onSeedTestData: () -> Unit = {
         val database = AppDatabase.getDatabase(context)
         // Using main scope or lifecycleScope if accessible
@@ -314,169 +344,202 @@ fun MainAppScaffold() {
         }
     }
 
-    Scaffold(
-        bottomBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(82.dp)
-                    .background(Color.White)
-                    .drawBehind {
-                        drawLine(
-                            color = com.attentionguard.ui.theme.HairlineSoft,
-                            start = Offset(0f, 0f),
-                            end = Offset(size.width, 0f),
-                            strokeWidth = 2f
-                        )
-                    }
-                    .padding(bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                val tabs = listOf(
-                    TabItem("today", "Today", Icons.Default.CalendarToday),
-                    TabItem("insights", "Insights", Icons.Default.BarChart),
-                    TabItem("alerts", "Alerts", Icons.Default.Notifications),
-                    TabItem("meditate", "Meditate", Icons.Default.SelfImprovement),
-                    TabItem("settings", "Profile", Icons.Default.Person)
+    if (!useSimulatedData && (!isAccessibilityGranted || !isOverlayGranted)) {
+        PermissionSetupScreen(
+            isAccessibilityGranted = isAccessibilityGranted,
+            isOverlayGranted = isOverlayGranted,
+            onFixAccessibility = {
+                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                context.startActivity(intent)
+                Toast.makeText(
+                    context,
+                    "Please turn on 'Attention Guard' in Accessibility settings",
+                    Toast.LENGTH_LONG
+                ).show()
+            },
+            onFixOverlay = {
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:${context.packageName}")
                 )
+                context.startActivity(intent)
+            },
+            onRemindMeLater = {
+                AttentionMonitoringService.useSimulatedData = true
+                useSimulatedData = true
+                Toast.makeText(
+                    context,
+                    "Simulated Data mode enabled.",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        )
+    } else {
+        Scaffold(
+            bottomBar = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(82.dp)
+                        .background(Color.White)
+                        .drawBehind {
+                            drawLine(
+                                color = com.attentionguard.ui.theme.HairlineSoft,
+                                start = Offset(0f, 0f),
+                                end = Offset(size.width, 0f),
+                                strokeWidth = 2f
+                            )
+                        }
+                        .padding(bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    val tabs = listOf(
+                        TabItem("today", "Today", Icons.Default.CalendarToday),
+                        TabItem("insights", "Insights", Icons.Default.BarChart),
+                        TabItem("alerts", "Alerts", Icons.Default.Notifications),
+                        TabItem("meditate", "Meditate", Icons.Default.SelfImprovement),
+                        TabItem("settings", "Profile", Icons.Default.Person)
+                    )
 
-                tabs.forEach { tab ->
-                    val selected = activeTab == tab.id
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(100.dp))
-                            .background(if (selected) com.attentionguard.ui.theme.SurfaceSoft else Color.Transparent)
-                            .clickable { activeTab = tab.id }
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                    tabs.forEach { tab ->
+                        val selected = activeTab == tab.id
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(100.dp))
+                                .background(if (selected) com.attentionguard.ui.theme.SurfaceSoft else Color.Transparent)
+                                .clickable { activeTab = tab.id }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = tab.icon,
-                                contentDescription = tab.label,
-                                tint = if (selected) com.attentionguard.ui.theme.CommerceCobalt else com.attentionguard.ui.theme.SecondaryGray,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Text(
-                                text = tab.label,
-                                fontSize = 12.sp,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (selected) com.attentionguard.ui.theme.CommerceCobalt else com.attentionguard.ui.theme.SecondaryGray
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = tab.icon,
+                                    contentDescription = tab.label,
+                                    tint = if (selected) com.attentionguard.ui.theme.CommerceCobalt else com.attentionguard.ui.theme.SecondaryGray,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Text(
+                                    text = tab.label,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (selected) com.attentionguard.ui.theme.CommerceCobalt else com.attentionguard.ui.theme.SecondaryGray
+                                )
+                            }
                         }
                     }
                 }
             }
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when (activeTab) {
-                "today" -> DashboardScreen(
-                    apiScore = apiScore,
-                    riskTier = riskTier,
-                    sessionDuration = sessionDuration,
-                    scrollVelocity = scrollVelocity,
-                    switchFreq = switchFreq,
-                    nightRatio = nightRatio
-                )
-                "insights" -> InsightsScreen(
-                    apiScore = apiScore,
-                    riskTier = riskTier,
-                    sessionDuration = sessionDuration,
-                    scrollVelocity = scrollVelocity,
-                    switchFreq = switchFreq,
-                    nightRatio = nightRatio,
-                    skipFrequency = skipFrequency,
-                    youtubeDuration = youtubeDuration,
-                    instagramDuration = instagramDuration,
-                    tiktokDuration = tiktokDuration,
-                    isYoutubeInstalled = isYoutubeInstalled,
-                    isInstagramInstalled = isInstagramInstalled,
-                    isTiktokInstalled = isTiktokInstalled,
-                    dbLogs = dbLogs,
-                    useSimulatedData = useSimulatedData,
-                    onNavigateToMeditate = { activeTab = "meditate" }
-                )
-                "alerts" -> AlertsScreen(alerts = alertsList)
-                "meditate" -> MeditateScreen(
-                    apiScore = apiScore,
-                    riskTier = riskTier,
-                    onActivatePlan = { /* Action callback */ }
-                )
-                "settings" -> SettingsScreen(
-                    useSimulatedData = useSimulatedData,
-                    onSimulatedDataToggled = {
-                        AttentionMonitoringService.useSimulatedData = it
-                        useSimulatedData = it
-                        if (!it) {
-                            val results = AttentionMonitoringService.queryMetricsDirectly(context)
-                            
-                            AttentionMonitoringService.youtubeDuration = results.youtube
-                            AttentionMonitoringService.instagramDuration = results.instagram
-                            AttentionMonitoringService.tiktokDuration = results.tiktok
-                            
-                            isYoutubeInstalled = AttentionMonitoringService.isYoutubeInstalled
-                            isInstagramInstalled = AttentionMonitoringService.isInstagramInstalled
-                            isTiktokInstalled = AttentionMonitoringService.isTiktokInstalled
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+            ) {
+                when (activeTab) {
+                    "today" -> DashboardScreen(
+                        apiScore = apiScore,
+                        riskTier = riskTier,
+                        sessionDuration = sessionDuration,
+                        scrollVelocity = scrollVelocity,
+                        switchFreq = switchFreq,
+                        nightRatio = nightRatio
+                    )
+                    "insights" -> InsightsScreen(
+                        apiScore = apiScore,
+                        riskTier = riskTier,
+                        sessionDuration = sessionDuration,
+                        scrollVelocity = scrollVelocity,
+                        switchFreq = switchFreq,
+                        nightRatio = nightRatio,
+                        skipFrequency = skipFrequency,
+                        youtubeDuration = youtubeDuration,
+                        instagramDuration = instagramDuration,
+                        tiktokDuration = tiktokDuration,
+                        isYoutubeInstalled = isYoutubeInstalled,
+                        isInstagramInstalled = isInstagramInstalled,
+                        isTiktokInstalled = isTiktokInstalled,
+                        dbLogs = dbLogs,
+                        useSimulatedData = useSimulatedData,
+                        onNavigateToMeditate = { activeTab = "meditate" }
+                    )
+                    "alerts" -> AlertsScreen(alerts = alertsList)
+                    "meditate" -> MeditateScreen(
+                        apiScore = apiScore,
+                        riskTier = riskTier,
+                        onActivatePlan = { /* Action callback */ }
+                    )
+                    "settings" -> SettingsScreen(
+                        useSimulatedData = useSimulatedData,
+                        onSimulatedDataToggled = {
+                            AttentionMonitoringService.useSimulatedData = it
+                            useSimulatedData = it
+                            if (!it) {
+                                val results = AttentionMonitoringService.queryMetricsDirectly(context)
+                                
+                                AttentionMonitoringService.youtubeDuration = results.youtube
+                                AttentionMonitoringService.instagramDuration = results.instagram
+                                AttentionMonitoringService.tiktokDuration = results.tiktok
+                                
+                                isYoutubeInstalled = AttentionMonitoringService.isYoutubeInstalled
+                                isInstagramInstalled = AttentionMonitoringService.isInstagramInstalled
+                                isTiktokInstalled = AttentionMonitoringService.isTiktokInstalled
 
-                            AttentionMonitoringService.updateCalculations(
-                                context = context,
-                                session = results.session,
-                                scroll = results.scroll,
-                                switches = results.switches,
-                                night = results.night,
-                                skip = results.skip
-                            )
+                                AttentionMonitoringService.updateCalculations(
+                                    context = context,
+                                    session = results.session,
+                                    scroll = results.scroll,
+                                    switches = results.switches,
+                                    night = results.night,
+                                    skip = results.skip
+                                )
+                            }
+                        },
+                        sessionDuration = sessionDuration,
+                        onSessionChanged = { sessionDuration = it; onSignalChanged() },
+                        launchFrequency = launchFrequency,
+                        onLaunchesChanged = { launchFrequency = it; onSignalChanged() },
+                        scrollVelocity = scrollVelocity,
+                        onScrollChanged = { scrollVelocity = it; onSignalChanged() },
+                        skipFrequency = skipFrequency,
+                        onSkipsChanged = { skipFrequency = it; onSignalChanged() },
+                        switchFreq = switchFreq,
+                        onSwitchesChanged = { switchFreq = it; onSignalChanged() },
+                        foregroundLatency = foregroundLatency,
+                        onLatencyChanged = { foregroundLatency = it; onSignalChanged() },
+                        nightRatio = nightRatio,
+                        onNightChanged = { nightRatio = it; onSignalChanged() },
+                        onSeedTestData = onSeedTestData
+                    )
+                }
+
+                // Moderate Risk Dialog Popup
+                if (showNudgeModal) {
+                    NudgeModal(
+                        apiScore = apiScore,
+                        onDismiss = { showNudgeModal = false }
+                    )
+                }
+
+                // High Risk Fullscreen Overlay
+                if (showOverlayModal) {
+                    PreventionPlanOverlayModal(
+                        apiScore = apiScore,
+                        onDismiss = { showOverlayModal = false },
+                        onActivate = {
+                            showOverlayModal = false
+                            activeTab = "meditate"
                         }
-                    },
-                    sessionDuration = sessionDuration,
-                    onSessionChanged = { sessionDuration = it; onSignalChanged() },
-                    launchFrequency = launchFrequency,
-                    onLaunchesChanged = { launchFrequency = it; onSignalChanged() },
-                    scrollVelocity = scrollVelocity,
-                    onScrollChanged = { scrollVelocity = it; onSignalChanged() },
-                    skipFrequency = skipFrequency,
-                    onSkipsChanged = { skipFrequency = it; onSignalChanged() },
-                    switchFreq = switchFreq,
-                    onSwitchesChanged = { switchFreq = it; onSignalChanged() },
-                    foregroundLatency = foregroundLatency,
-                    onLatencyChanged = { foregroundLatency = it; onSignalChanged() },
-                    nightRatio = nightRatio,
-                    onNightChanged = { nightRatio = it; onSignalChanged() },
-                    onSeedTestData = onSeedTestData
-                )
-            }
-
-            // Moderate Risk Dialog Popup
-            if (showNudgeModal) {
-                NudgeModal(
-                    apiScore = apiScore,
-                    onDismiss = { showNudgeModal = false }
-                )
-            }
-
-            // High Risk Fullscreen Overlay
-            if (showOverlayModal) {
-                PreventionPlanOverlayModal(
-                    apiScore = apiScore,
-                    onDismiss = { showOverlayModal = false },
-                    onActivate = {
-                        showOverlayModal = false
-                        activeTab = "meditate"
-                    }
-                )
+                    )
+                }
             }
         }
     }
 }
 
 data class TabItem(val id: String, val label: String, val icon: ImageVector)
+
 

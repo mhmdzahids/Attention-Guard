@@ -11,13 +11,29 @@ class AttentionAccessibilityService : AccessibilityService() {
         if (event == null) return
         
         val pkgName = event.packageName?.toString() ?: return
+        if (pkgName.isNotEmpty()) {
+            val oldPackage = activePackage
+            val canonicalOld = oldPackage?.let { getCanonicalPackageName(it) }
+            val canonicalNew = getCanonicalPackageName(pkgName)
+            if (canonicalOld != canonicalNew) {
+                activePackage = pkgName
+                activePackageStartTime = System.currentTimeMillis()
+                
+                // Reset scroll tracking values on app/package change
+                lastScrollTime = 0L
+                lastScrollY = -1
+                lastScrollX = -1
+                currentVelocity = 0f
+            }
+        }
+
         val isTargetApp = pkgName == "com.google.android.youtube" ||
                           pkgName == "com.instagram.android" ||
                           pkgName == "com.zhiliaoapp.musically" ||
                           pkgName == "com.ss.android.ugc.trill" ||
                           pkgName == "com.ss.android.ugc.aweme" ||
                           pkgName == "com.ss.android.ugc.aweme.lite"
-                          
+                           
         if (!isTargetApp) return
         
         when (event.eventType) {
@@ -52,6 +68,19 @@ class AttentionAccessibilityService : AccessibilityService() {
     companion object {
         private const val TAG = "AttentionAccessibility"
         private var instance: AttentionAccessibilityService? = null
+        
+        var activePackage: String? = null
+        var activePackageStartTime = 0L
+
+        fun getCanonicalPackageName(pkg: String): String {
+            return when (pkg) {
+                "com.zhiliaoapp.musically",
+                "com.ss.android.ugc.trill",
+                "com.ss.android.ugc.aweme",
+                "com.ss.android.ugc.aweme.lite" -> "com.zhiliaoapp.musically"
+                else -> pkg
+            }
+        }
         
         private var lastScrollTime = 0L
         private var lastScrollY = -1

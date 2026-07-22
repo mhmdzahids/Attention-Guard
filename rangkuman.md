@@ -70,6 +70,28 @@ Hari ini telah diselesaikan serangkaian optimalisasi kode dan perbaikan bug arsi
     *   **Custom Context-Aware Messages**: Judul dan deskripsi alert kini dievaluasi secara dinamis dari sensor yang memiliki beban kontribusi terbesar (misal: memicu alert berpindah aplikasi `"High Task-Switching Alert"` di siang hari secara cerdas, dan `"Late-Night Scroll Alert"` hanya saat sensor malam mendominasi).
     *   **Room DB Limit**: Membatasi query database `getAllLogsFlow` ke `LIMIT 150` log terbaru untuk menjamin efisiensi memori jangka panjang.
 
+#### 🕒 Pukul 21:07 - 21:15 WIB | Real-Time Sliding Window Chart, Package Normalization & DB Logging Rate
+*   **Masalah**:
+    1.  *Label Sumbu X Bertumpuk*: Label sumbu X bagan hourly bertumpuk dan tidak sinkron ketika waktu terus bergerak maju.
+    2.  *Durasi Scrolling TikTok/YouTube Terhenti*: Scrolling TikTok/YouTube Shorts terus-menerus sering kali tidak tercatat secara penuh akibat delay update `UsageStatsManager` atau terhapusnya state `lastResumedPackage` di latar belakang.
+    3.  *Rate Penulisan DB Lambat*: Penulisan log lokal Room rate limit 2 menit sekali kurang mencerminkan pembaruan real-time di UI.
+*   **Perbaikan**:
+    *   **Bagan Geser 24 Jam**: Mengubah visualisasi bagan hourly di [InsightsScreen.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/ui/screens/InsightsScreen.kt) agar selalu berupa bagan geser 24 jam terakhir (index 0..23). Label sumbu X dihitung mundur dari waktu jam saat ini agar bergeser halus ke kiri dan tidak bertumpuk.
+    - **Normalisasi Paket Regional**: Menyatukan package TikTok regional (`com.ss.android.ugc.trill`, `com.zhiliaoapp.musically`, dll) ke satu package kanonikal saat penambahan durasi.
+    *   **Fallback Tracker Aktif**: Mengintegrasikan stempel waktu real-time dari Accessibility Service (`AttentionAccessibilityService.activePackage`) sebagai fallback durasi aktif jika `UsageEvents` mengalami hambatan data.
+    *   **DB Write 1 Menit**: Menurunkan batas penulisan database lokal menjadi 1 menit (`60000ms`) sekali agar data Room terbarui lebih gesit.
+
+#### 🕒 Pukul 21:26 - 21:39 WIB | Permission Setup Screen, Routing Gate & Simulated Mode Synchronization
+*   **Masalah**:
+    1.  *Absensi Layar Izin*: Belum tersedianya layar Compose persetujuan izin awal yang memandu pengguna untuk mengaktifkan Accessibility Service & Display Over Other Apps secara formal.
+    2.  *Gating Navigasi & Recheck*: Dibutuhkan mekanisme pemindaian berkala saat pengguna kembali dari System Settings agar halaman setup tertutup otomatis begitu izin didapat.
+    3.  *Simulator Target Exposure Kosong*: Saat beralih ke mode simulasi (termasuk bypass), detail kontribusi durasi aplikasi target menghilang/kosong karena state instalasi package bernilai false di perangkat emulator.
+*   **Perbaikan**:
+    *   **PermissionSetupScreen.kt**: Membuat layar Compose setup perizinan [PermissionSetupScreen.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/ui/screens/PermissionSetupScreen.kt) baru dengan layout Stark White, Commerce Cobalt, Warning Amber badge, card outline 16.dp, serta ilustrasi Canvas geometris yang estetik.
+    - **Pemeriksaan Instan & Lifecycle Observer**: Menambahkan `LifecycleEventObserver` di [MainActivity.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/MainActivity.kt) untuk memindai status perizinan secara instan setiap kali aplikasi memasuki keadaan `onResume` (kembali dari settings), didukung inisialisasi status di frame awal.
+    - **Bypass Mode Simulasi**: Mengubah default status `useSimulatedData` menjadi `false` agar alur perizinan wajib muncul sejak instalasi pertama.
+    - **LaunchedEffect Penyelaras Simulasi**: Menambahkan `LaunchedEffect(useSimulatedData)` yang memaksa inisialisasi data simulasi berjalan seketika saat pengguna mengklik "Remind Me Later" atau menyalakan mode simulasi di Settings, memastikan detail kontribusi aplikasi tetap muncul dengan benar.
+
 ---
 
 ## 3. Hal-hal yang Dapat Disempurnakan di Masa Mendatang (Future Improvements)

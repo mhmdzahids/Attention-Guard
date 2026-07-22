@@ -167,38 +167,51 @@ fun InsightsScreen(
     val scaleFactor = if (activeApiScore > 0f) activeApiScore / 0.52f else 1f
     
     // Group logs by exact hour of day (0..24), smooth out baseline fallback via linear interpolation (lerp)
-    val hourlyPoints = remember(todayLogs, scaleFactor) {
-        (0..24).map { hour ->
-            val logsInHour = todayLogs.filter {
-                val cal = java.util.Calendar.getInstance().apply { timeInMillis = it.timestamp }
-                cal.get(java.util.Calendar.HOUR_OF_DAY) == hour
+    val currentHour = remember(dbLogs) { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
+    val visibleHoursCount = 24
+
+    // Group logs by exact hour of day in a 24-hour sliding window, smooth out baseline fallback via linear interpolation (lerp)
+    val hourlyPoints = remember(dbLogs, scaleFactor, currentHour) {
+        val cal = java.util.Calendar.getInstance()
+        (0..23).map { i ->
+            val hoursAgo = 23 - i
+            val slotCal = java.util.Calendar.getInstance().apply {
+                timeInMillis = cal.timeInMillis
+                add(java.util.Calendar.HOUR_OF_DAY, -hoursAgo)
             }
-            if (logsInHour.isNotEmpty()) {
-                logsInHour.map { it.apiScore }.average().toFloat()
+            val hourOfDay = slotCal.get(java.util.Calendar.HOUR_OF_DAY)
+            val dayOfYear = slotCal.get(java.util.Calendar.DAY_OF_YEAR)
+            val year = slotCal.get(java.util.Calendar.YEAR)
+
+            val logsInSlot = dbLogs.filter { log ->
+                val logCal = java.util.Calendar.getInstance().apply { timeInMillis = log.timestamp }
+                logCal.get(java.util.Calendar.HOUR_OF_DAY) == hourOfDay &&
+                logCal.get(java.util.Calendar.DAY_OF_YEAR) == dayOfYear &&
+                logCal.get(java.util.Calendar.YEAR) == year
+            }
+
+            if (logsInSlot.isNotEmpty()) {
+                logsInSlot.map { it.apiScore }.average().toFloat()
             } else {
-                val lowIndex = hour / 3
+                val lowIndex = hourOfDay / 3
                 val highIndex = Math.min(8, lowIndex + 1)
-                val fraction = (hour % 3) / 3f
+                val fraction = (hourOfDay % 3) / 3f
                 val interpolatedBaseline = hourlyBaseline[lowIndex] * (1f - fraction) + hourlyBaseline[highIndex] * fraction
                 Math.min(1.0f, interpolatedBaseline * scaleFactor)
             }
         }
     }
-
-    val currentHour = remember { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
-    val visibleHoursCount = remember(currentHour) {
-        currentHour + 1
-    }
     
-    val peakIndex = remember(hourlyPoints, visibleHoursCount) {
-        hourlyPoints.take(visibleHoursCount).indices.maxByOrNull { hourlyPoints[it] } ?: 0
+    val peakIndex = remember(hourlyPoints) {
+        hourlyPoints.indices.maxByOrNull { hourlyPoints[it] } ?: 23
     }
-    val peakHourText = remember(peakIndex) {
-        val amPm = if (peakIndex >= 12 && peakIndex < 24) "PM" else "AM"
+    val peakHourText = remember(peakIndex, currentHour) {
+        val peakHourOfDay = (currentHour - 23 + peakIndex + 24) % 24
+        val amPm = if (peakHourOfDay >= 12) "PM" else "AM"
         val displayHour = when {
-            peakIndex == 0 || peakIndex == 24 -> 12
-            peakIndex > 12 -> peakIndex - 12
-            else -> peakIndex
+            peakHourOfDay == 0 -> 12
+            peakHourOfDay > 12 -> peakHourOfDay - 12
+            else -> peakHourOfDay
         }
         String.format("%02d:00 %s", displayHour, amPm)
     }
@@ -554,12 +567,12 @@ fun InsightsScreen(
                                         val labelStep = if (chartScale > 1.5f) 3 else 6
                                         val labelList = mutableListOf<Pair<Int, String>>()
                                         
-                                        for (h in 0..currentHour step labelStep) {
-                                            labelList.add(h to formatHourLabel(h))
-                                        }
-                                        // Always include the current hour at the far right
-                                        if (currentHour % labelStep != 0) {
-                                            labelList.add(currentHour to formatHourLabel(currentHour))
+                                        // Start from current hour (rightmost, index 23) and go backward
+                                        var idx = 23
+                                        while (idx >= 0) {
+                                            val hr = (currentHour - (23 - idx) + 24) % 24
+                                            labelList.add(idx to formatHourLabel(hr))
+                                            idx -= labelStep
                                         }
 
                                         labelList.forEach { (index, time) ->
