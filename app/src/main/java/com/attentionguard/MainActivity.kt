@@ -99,6 +99,8 @@ data class AlertLog(
     val riskTier: String
 )
 
+data class TabItem(val id: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
+
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun MainAppScaffold() {
@@ -147,6 +149,7 @@ fun MainAppScaffold() {
     var isYoutubeInstalled by remember { mutableStateOf(AttentionMonitoringService.isYoutubeInstalled) }
     var isInstagramInstalled by remember { mutableStateOf(AttentionMonitoringService.isInstagramInstalled) }
     var isTiktokInstalled by remember { mutableStateOf(AttentionMonitoringService.isTiktokInstalled) }
+    var isPreventionPlanActive by remember { mutableStateOf(false) }
 
     // Calculated state
     var apiScore by remember { mutableStateOf(0.52f) }
@@ -593,7 +596,19 @@ fun MainAppScaffold() {
                         3 -> MeditateScreen(
                             apiScore = apiScore,
                             riskTier = riskTier,
-                            onActivatePlan = { /* Action callback */ }
+                            isPlanActive = isPreventionPlanActive,
+                            onActivatePlan = { showOverlayModal = true },
+                            onModifyPlan = { isPreventionPlanActive = false },
+                            onViewDashboard = {
+                                coroutineScope.launch {
+                                    try {
+                                        transitionTargetPage = 0
+                                        pagerState.animateScrollToPage(0)
+                                    } finally {
+                                        transitionTargetPage = null
+                                    }
+                                }
+                            }
                         )
                     4 -> SettingsScreen(
                         useSimulatedData = useSimulatedData,
@@ -635,7 +650,8 @@ fun MainAppScaffold() {
                         onLatencyChanged = { foregroundLatency = it; onSignalChanged() },
                         nightRatio = nightRatio,
                         onNightChanged = { nightRatio = it; onSignalChanged() },
-                        onSeedTestData = onSeedTestData
+                        onSeedTestData = onSeedTestData,
+                        onTriggerNudgeModal = { showNudgeModal = true }
                     )
                 }
             }
@@ -645,6 +661,7 @@ fun MainAppScaffold() {
                 if (showNudgeModal) {
                     NudgeModal(
                         apiScore = apiScore,
+                        dbLogs = dbLogs,
                         onDismiss = { showNudgeModal = false }
                     )
                 }
@@ -655,6 +672,7 @@ fun MainAppScaffold() {
                         apiScore = apiScore,
                         onDismiss = { showOverlayModal = false },
                         onActivate = {
+                            isPreventionPlanActive = true
                             showOverlayModal = false
                             coroutineScope.launch {
                                 val targetIndex = tabs.indexOfFirst { it.id == "meditate" }
@@ -674,6 +692,5 @@ fun MainAppScaffold() {
         }
     }
 
-data class TabItem(val id: String, val label: String, val icon: ImageVector)
 
 
