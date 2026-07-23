@@ -52,6 +52,8 @@ class AttentionMonitoringService : Service() {
         Thread {
             while (isRunning) {
                 try {
+                    checkAndInsertDecayLog(this)
+                    
                     if (!useSimulatedData) {
                         querySystemMetrics()
                     }
@@ -128,6 +130,59 @@ class AttentionMonitoringService : Service() {
                 riskTier = "low"
             }
             lastCalculationDay = currentDay
+        }
+
+        fun checkAndInsertDecayLog(context: Context) {
+            try {
+                val db = AppDatabase.getDatabase(context)
+                kotlinx.coroutines.runBlocking {
+                    val lastLog = db.attentionLogDao().getLatestLog()
+                    val now = System.currentTimeMillis()
+                    if (lastLog != null) {
+                        val diffMs = now - lastLog.timestamp
+                        val fifteenMinutesMs = 15 * 60 * 1000L
+                        
+                        val activePkg = AttentionAccessibilityService.activePackage
+                        val isShortFormRunning = activePkg != null && TARGET_PACKAGES.contains(activePkg)
+                        
+                        if (diffMs > fifteenMinutesMs && !isShortFormRunning) {
+                            Log.d(TAG, "Inserting decay log. Time difference: ${diffMs / 60000} mins. No active short-form app.")
+                            
+                            val decayLog = AttentionLog(
+                                timestamp = now,
+                                sessionDuration = lastLog.sessionDuration,
+                                scrollVelocity = 0f,
+                                taskSwitches = 0f,
+                                nightRatio = 0f,
+                                apiScore = 0.0f,
+                                riskTier = "low",
+                                isAlertEvent = false
+                            )
+                            db.attentionLogDao().insertLog(decayLog)
+                            
+                            if (!useSimulatedData) {
+                                checkAndResetAtMidnight()
+                                apiScore = 0.0f
+                                riskTier = "low"
+                                currentScroll = 0f
+                                currentSwitches = 0f
+                                currentNight = 0f
+                                onMetricsUpdated?.invoke(
+                                    currentSession,
+                                    currentScroll,
+                                    currentSwitches,
+                                    currentNight,
+                                    currentSkip,
+                                    apiScore,
+                                    riskTier
+                                )
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking/inserting decay log", e)
+            }
         }
 
         // Current real-world or simulated metric values
