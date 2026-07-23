@@ -632,7 +632,15 @@ fun InsightsScreen(
                                     if (currentRenderType == "hourly") {
                                          // Dynamic continuous X labels drift & fade-in/fade-out
                                          val totalSpanHours = (liveTimeMs - chartStart) / 3600000f
-                                         val effectiveLabelStep = if (totalSpanHours <= 5f) 1 else if (chartScale > 1.5f) 3 else 6
+                                         val effectiveLabelStep = if (totalSpanHours <= 5f) {
+                                             1
+                                         } else if (chartScale > 3.0f) {
+                                             1
+                                         } else if (chartScale > 1.5f) {
+                                             3
+                                         } else {
+                                             6
+                                         }
                                          val hourMarks = remember(liveTimeMs, effectiveLabelStep, chartStart) {
                                              val startTime = chartStart
                                              val marks = mutableListOf<Pair<Long, String>>()
