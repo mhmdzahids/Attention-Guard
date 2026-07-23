@@ -29,6 +29,8 @@ import com.attentionguard.ui.theme.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
@@ -54,7 +56,8 @@ fun InsightsScreen(
     isTiktokInstalled: Boolean,
     dbLogs: List<com.attentionguard.data.AttentionLog>,
     useSimulatedData: Boolean,
-    onNavigateToMeditate: () -> Unit
+    onNavigateToMeditate: () -> Unit,
+    onScrollEnabledChanged: (Boolean) -> Unit
 ) {
     val scrollState = rememberScrollState()
     
@@ -441,6 +444,16 @@ fun InsightsScreen(
                     BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .pointerInput(Unit) {
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false)
+                                    onScrollEnabledChanged(false)
+                                    do {
+                                        val event = awaitPointerEvent()
+                                    } while (event.changes.any { it.pressed })
+                                    onScrollEnabledChanged(true)
+                                }
+                            }
                             .pointerInput(Unit) {
                                 detectTransformGestures { _, _, zoom, _ ->
                                     chartScale = (chartScale * zoom).coerceIn(1f, 3.5f)

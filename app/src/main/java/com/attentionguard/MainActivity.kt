@@ -48,6 +48,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.awaitFirstDown
 
 class MainActivity : ComponentActivity() {
 
@@ -106,36 +109,20 @@ fun MainAppScaffold() {
         TabItem("meditate", "Meditate", Icons.Default.SelfImprovement),
         TabItem("settings", "Profile", Icons.Default.Person)
     )
-    var activeTab by remember { mutableStateOf("today") }
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 5 })
     val coroutineScope = rememberCoroutineScope()
-    var programmaticTargetPage by remember { mutableStateOf<Int?>(null) }
+    var transitionTargetPage by remember { mutableStateOf<Int?>(null) }
+    var pagerScrollEnabled by remember { mutableStateOf(true) }
+    var resetJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    
+    val activePageIndex by remember {
+        derivedStateOf { transitionTargetPage ?: pagerState.currentPage }
+    }
     
     val customFlingBehavior = PagerDefaults.flingBehavior(
         state = pagerState,
         snapAnimationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
     )
-    
-    // Synchronize pager state change to activeTab (observing currentPage with programmatic target guard)
-    LaunchedEffect(pagerState.currentPage) {
-        val target = programmaticTargetPage
-        if (target == null || pagerState.currentPage == target) {
-            val tabId = tabs[pagerState.currentPage].id
-            if (activeTab != tabId) {
-                activeTab = tabId
-            }
-        }
-    }
-
-    // Synchronize activeTab change to pager state
-    LaunchedEffect(activeTab) {
-        val pageIndex = tabs.indexOfFirst { it.id == activeTab }
-        if (pageIndex != -1 && pagerState.currentPage != pageIndex) {
-            programmaticTargetPage = pageIndex
-            pagerState.animateScrollToPage(pageIndex)
-            programmaticTargetPage = null
-        }
-    }
 
     val context = LocalContext.current
     val database = remember { AppDatabase.getDatabase(context) }
@@ -469,14 +456,21 @@ fun MainAppScaffold() {
                 ) {
 
 
-                    tabs.forEach { tab ->
-                        val selected = activeTab == tab.id
+                    tabs.forEachIndexed { pageIndex, tab ->
+                        val selected = activePageIndex == pageIndex
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(100.dp))
                                 .background(if (selected) com.attentionguard.ui.theme.SurfaceSoft else Color.Transparent)
                                 .clickable {
-                                    activeTab = tab.id
+                                    coroutineScope.launch {
+                                        try {
+                                            transitionTargetPage = pageIndex
+                                            pagerState.animateScrollToPage(pageIndex)
+                                        } finally {
+                                            transitionTargetPage = null
+                                        }
+                                    }
                                 }
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                             contentAlignment = Alignment.Center
@@ -506,43 +500,101 @@ fun MainAppScaffold() {
             HorizontalPager(
                 state = pagerState,
                 flingBehavior = customFlingBehavior,
+                userScrollEnabled = pagerScrollEnabled,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
+                    .pointerInput(Unit) {
+                        awaitPointerEventScope {
+                            while (true) {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                resetJob?.cancel()
+                                var totalX = 0f
+                                var totalY = 0f
+                                var isDirectionDecided = false
+                                
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val dragChange = event.changes.firstOrNull()
+                                    if (dragChange != null && dragChange.pressed) {
+                                        val positionChange = dragChange.position - dragChange.previousPosition
+                                        totalX += positionChange.x
+                                        totalY += positionChange.y
+                                        
+                                        if (!isDirectionDecided && (Math.abs(totalX) > 10f || Math.abs(totalY) > 10f)) {
+                                            isDirectionDecided = true
+                                            if (Math.abs(totalY) > Math.abs(totalX) * 1.2f) {
+                                                pagerScrollEnabled = false
+                                            } else {
+                                                pagerScrollEnabled = true
+                                            }
+                                        }
+                                    }
+                                } while (event.changes.any { it.pressed })
+                                
+                                resetJob = coroutineScope.launch {
+                                    kotlinx.coroutines.delay(500)
+                                    pagerScrollEnabled = true
+                                }
+                            }
+                        }
+                    }
             ) { page ->
-                when (page) {
-                    0 -> DashboardScreen(
-                        apiScore = apiScore,
-                        riskTier = riskTier,
-                        sessionDuration = sessionDuration,
-                        scrollVelocity = scrollVelocity,
-                        switchFreq = switchFreq,
-                        nightRatio = nightRatio
-                    )
-                    1 -> InsightsScreen(
-                        apiScore = apiScore,
-                        riskTier = riskTier,
-                        sessionDuration = sessionDuration,
-                        scrollVelocity = scrollVelocity,
-                        switchFreq = switchFreq,
-                        nightRatio = nightRatio,
-                        skipFrequency = skipFrequency,
-                        youtubeDuration = youtubeDuration,
-                        instagramDuration = instagramDuration,
-                        tiktokDuration = tiktokDuration,
-                        isYoutubeInstalled = isYoutubeInstalled,
-                        isInstagramInstalled = isInstagramInstalled,
-                        isTiktokInstalled = isTiktokInstalled,
-                        dbLogs = dbLogs,
-                        useSimulatedData = useSimulatedData,
-                        onNavigateToMeditate = { activeTab = "meditate" }
-                    )
-                    2 -> AlertsScreen(alerts = alertsList)
-                    3 -> MeditateScreen(
-                        apiScore = apiScore,
-                        riskTier = riskTier,
-                        onActivatePlan = { /* Action callback */ }
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            clip = true
+                        }
+                ) {
+                    when (page) {
+                        0 -> DashboardScreen(
+                            apiScore = apiScore,
+                            riskTier = riskTier,
+                            sessionDuration = sessionDuration,
+                            scrollVelocity = scrollVelocity,
+                            switchFreq = switchFreq,
+                            nightRatio = nightRatio
+                        )
+                        1 -> InsightsScreen(
+                            apiScore = apiScore,
+                            riskTier = riskTier,
+                            sessionDuration = sessionDuration,
+                            scrollVelocity = scrollVelocity,
+                            switchFreq = switchFreq,
+                            nightRatio = nightRatio,
+                            skipFrequency = skipFrequency,
+                            youtubeDuration = youtubeDuration,
+                            instagramDuration = instagramDuration,
+                            tiktokDuration = tiktokDuration,
+                            isYoutubeInstalled = isYoutubeInstalled,
+                            isInstagramInstalled = isInstagramInstalled,
+                            isTiktokInstalled = isTiktokInstalled,
+                            dbLogs = dbLogs,
+                            useSimulatedData = useSimulatedData,
+                            onNavigateToMeditate = {
+                                coroutineScope.launch {
+                                    val targetIndex = tabs.indexOfFirst { it.id == "meditate" }
+                                    if (targetIndex != -1) {
+                                        try {
+                                            transitionTargetPage = targetIndex
+                                            pagerState.animateScrollToPage(targetIndex)
+                                        } finally {
+                                            transitionTargetPage = null
+                                        }
+                                    }
+                                }
+                            },
+                            onScrollEnabledChanged = { enabled ->
+                                pagerScrollEnabled = enabled
+                            }
+                        )
+                        2 -> AlertsScreen(alerts = alertsList)
+                        3 -> MeditateScreen(
+                            apiScore = apiScore,
+                            riskTier = riskTier,
+                            onActivatePlan = { /* Action callback */ }
+                        )
                     4 -> SettingsScreen(
                         useSimulatedData = useSimulatedData,
                         onSimulatedDataToggled = {
@@ -586,7 +638,8 @@ fun MainAppScaffold() {
                         onSeedTestData = onSeedTestData
                     )
                 }
-                }
+            }
+        }
 
                 // Moderate Risk Dialog Popup
                 if (showNudgeModal) {
@@ -603,7 +656,17 @@ fun MainAppScaffold() {
                         onDismiss = { showOverlayModal = false },
                         onActivate = {
                             showOverlayModal = false
-                            activeTab = "meditate"
+                            coroutineScope.launch {
+                                val targetIndex = tabs.indexOfFirst { it.id == "meditate" }
+                                if (targetIndex != -1) {
+                                    try {
+                                        transitionTargetPage = targetIndex
+                                        pagerState.animateScrollToPage(targetIndex)
+                                    } finally {
+                                        transitionTargetPage = null
+                                    }
+                                }
+                            }
                         }
                     )
                 }
