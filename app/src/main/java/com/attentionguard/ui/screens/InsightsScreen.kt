@@ -630,55 +630,60 @@ fun InsightsScreen(
                                         .padding(top = 4.dp)
                                 ) {
                                     if (currentRenderType == "hourly") {
-                                        // Dynamic continuous X labels drift & fade-in/fade-out
-                                        val labelStep = if (chartScale > 1.5f) 3 else 6
-                                        val hourMarks = remember(liveTimeMs, labelStep, chartStart) {
-                                            val startTime = chartStart
-                                            val marks = mutableListOf<Pair<Long, String>>()
-                                            
-                                            val cal = java.util.Calendar.getInstance().apply {
-                                                timeInMillis = startTime
-                                                set(java.util.Calendar.MINUTE, 0)
-                                                set(java.util.Calendar.SECOND, 0)
-                                                set(java.util.Calendar.MILLISECOND, 0)
-                                            }
-                                            if (cal.timeInMillis < startTime) {
-                                                cal.add(java.util.Calendar.HOUR_OF_DAY, 1)
-                                            }
-                                            
-                                            while (cal.timeInMillis <= liveTimeMs) {
-                                                val t = cal.timeInMillis
-                                                val hourVal = cal.get(java.util.Calendar.HOUR_OF_DAY)
-                                                if (hourVal % labelStep == 0) {
-                                                    val label = when {
-                                                        hourVal == 0 || hourVal == 24 -> "12 AM"
-                                                        hourVal == 12 -> "12 PM"
-                                                        hourVal > 12 -> "${hourVal - 12} PM"
-                                                        else -> "$hourVal AM"
-                                                    }
-                                                    marks.add(t to label)
-                                                }
-                                                cal.add(java.util.Calendar.HOUR_OF_DAY, 1)
-                                            }
-                                            marks
-                                        }
+                                         // Dynamic continuous X labels drift & fade-in/fade-out
+                                         val totalSpanHours = (liveTimeMs - chartStart) / 3600000f
+                                         val effectiveLabelStep = if (totalSpanHours <= 5f) 1 else if (chartScale > 1.5f) 3 else 6
+                                         val hourMarks = remember(liveTimeMs, effectiveLabelStep, chartStart) {
+                                             val startTime = chartStart
+                                             val marks = mutableListOf<Pair<Long, String>>()
+                                             
+                                             val cal = java.util.Calendar.getInstance().apply {
+                                                 timeInMillis = startTime
+                                                 set(java.util.Calendar.MINUTE, 0)
+                                                 set(java.util.Calendar.SECOND, 0)
+                                                 set(java.util.Calendar.MILLISECOND, 0)
+                                             }
+                                             if (cal.timeInMillis < startTime) {
+                                                 cal.add(java.util.Calendar.HOUR_OF_DAY, 1)
+                                             }
+                                             
+                                             while (cal.timeInMillis <= liveTimeMs) {
+                                                 val t = cal.timeInMillis
+                                                 val hourVal = cal.get(java.util.Calendar.HOUR_OF_DAY)
+                                                 if (hourVal % effectiveLabelStep == 0) {
+                                                     val label = when {
+                                                         hourVal == 0 || hourVal == 24 -> "12 AM"
+                                                         hourVal == 12 -> "12 PM"
+                                                         hourVal > 12 -> "${hourVal - 12} PM"
+                                                         else -> "$hourVal AM"
+                                                     }
+                                                     marks.add(t to label)
+                                                 }
+                                                 cal.add(java.util.Calendar.HOUR_OF_DAY, 1)
+                                             }
+                                             marks
+                                         }
 
-                                        hourMarks.forEach { (timestamp, time) ->
-                                            val rawXFraction = if (chartDuration > 0L) {
-                                                (timestamp - chartStart).toFloat() / chartDuration.toFloat()
-                                            } else {
-                                                0f
-                                            }
-                                            
-                                            val xPosDp = chartWidth * rawXFraction
-                                            val boundaryThresholdDp = 36.dp
-                                            
-                                            val alpha = when {
-                                                xPosDp < 0.dp || xPosDp > chartWidth -> 0f
-                                                xPosDp < boundaryThresholdDp -> (xPosDp / boundaryThresholdDp)
-                                                xPosDp > chartWidth - boundaryThresholdDp -> ((chartWidth - xPosDp) / boundaryThresholdDp)
-                                                else -> 1f
-                                            }.coerceIn(0f, 1f)
+                                         hourMarks.forEachIndexed { index, (timestamp, time) ->
+                                             val rawXFraction = if (chartDuration > 0L) {
+                                                 (timestamp - chartStart).toFloat() / chartDuration.toFloat()
+                                             } else {
+                                                 0f
+                                             }
+                                             
+                                             val xPosDp = chartWidth * rawXFraction
+                                             val boundaryThresholdDp = 36.dp
+                                             
+                                             var alpha = when {
+                                                 xPosDp < 0.dp || xPosDp > chartWidth -> 0f
+                                                 xPosDp < boundaryThresholdDp -> (xPosDp / boundaryThresholdDp)
+                                                 xPosDp > chartWidth - boundaryThresholdDp -> ((chartWidth - xPosDp) / boundaryThresholdDp)
+                                                 else -> 1f
+                                             }.coerceIn(0f, 1f)
+                                             
+                                             if (index == 0 && hourMarks.size <= 2 && xPosDp in 0.dp..chartWidth) {
+                                                 alpha = alpha.coerceAtLeast(0.4f)
+                                             }
                                             
                                             if (alpha > 0.01f) {
                                                 Text(
