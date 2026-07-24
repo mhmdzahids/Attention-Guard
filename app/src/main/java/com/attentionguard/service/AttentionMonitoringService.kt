@@ -10,6 +10,9 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import java.util.Calendar
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
 import com.attentionguard.data.AppDatabase
 import com.attentionguard.data.AttentionLog
 
@@ -115,8 +118,7 @@ class AttentionMonitoringService : Service() {
         private var lastCalculationDay = -1
 
         private fun checkAndResetAtMidnight() {
-            val cal = Calendar.getInstance()
-            val currentDay = cal.get(Calendar.DAY_OF_YEAR)
+            val currentDay = ZonedDateTime.now(ZoneId.systemDefault()).dayOfYear
             if (lastCalculationDay != -1 && currentDay != lastCalculationDay) {
                 currentSession = 0f
                 currentScroll = 0f
@@ -269,15 +271,12 @@ class AttentionMonitoringService : Service() {
                 ?: return MetricResults(1.5f, 142f, 8.2f, 0.12f, 0.6f, 0.5f, 0.4f, 64f)
             
             val endTime = System.currentTimeMillis()
-            val calendar = Calendar.getInstance()
-            calendar.timeInMillis = endTime
-            calendar.set(Calendar.HOUR_OF_DAY, 0)
-            calendar.set(Calendar.MINUTE, 0)
-            calendar.set(Calendar.SECOND, 0)
-            calendar.set(Calendar.MILLISECOND, 0)
-            val startTime = calendar.timeInMillis
+            val startTime = ZonedDateTime.now(ZoneId.systemDefault())
+                .truncatedTo(ChronoUnit.DAYS)
+                .toInstant()
+                .toEpochMilli()
 
-            val maxPossibleMs = endTime - startTime
+            val maxPossibleMs = Math.max(0L, endTime - startTime)
 
             // 1. Get exact durations from aggregated UsageStats (matches Digital Wellbeing)
             var totalDailyMs = 0L
@@ -530,6 +529,89 @@ class AttentionMonitoringService : Service() {
                 .build()
                 
             manager.notify(riskLevel.hashCode(), notification)
+        }
+
+        data class HourlyBucketData(
+            val hour: Int,
+            val label: String,
+            val startTimeMs: Long,
+            val endTimeMs: Long,
+            val durationMs: Long,
+            val apiScore: Float
+        )
+
+        fun queryHourlyBuckets(context: Context): List<HourlyBucketData> {
+            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+                ?: return emptyList()
+
+            val zoneId = ZoneId.systemDefault()
+            val nowZdt = ZonedDateTime.now(zoneId)
+            val startOfDayZdt = nowZdt.truncatedTo(ChronoUnit.DAYS)
+            val currentHour = nowZdt.hour
+            val nowMs = System.currentTimeMillis()
+
+            val buckets = mutableListOf<HourlyBucketData>()
+
+            for (h in 0..23) {
+                val bucketStart = startOfDayZdt.plusHours(h.toLong())
+                val bucketEnd = bucketStart.plusHours(1)
+                val startTimeMs = bucketStart.toInstant().toEpochMilli()
+                val endTimeMs = bucketEnd.toInstant().toEpochMilli()
+
+                val amPm = if (h >= 12) "PM" else "AM"
+                val displayHour = when {
+                    h == 0 -> 12
+                    h > 12 -> h - 12
+                    else -> h
+                }
+                val label = String.format("%02d:00 %s", displayHour, amPm)
+
+                if (h > currentHour || startTimeMs > nowMs) {
+                    buckets.add(HourlyBucketData(h, label, startTimeMs, endTimeMs, 0L, 0.0f))
+                    continue
+                }
+
+                val actualEnd = Math.min(endTimeMs, nowMs)
+                if (actualEnd <= startTimeMs) {
+                    buckets.add(HourlyBucketData(h, label, startTimeMs, endTimeMs, 0L, 0.0f))
+                    continue
+                }
+
+                var hourlyMs = 0L
+                val maxBucketDuration = actualEnd - startTimeMs
+                try {
+                    val stats = usageStatsManager.queryAndAggregateUsageStats(startTimeMs, actualEnd)
+                    for ((pkg, stat) in stats) {
+                        val canonicalPkg = getCanonicalPackageName(pkg)
+                        if (TARGET_PACKAGES.contains(pkg) || TARGET_PACKAGES.contains(canonicalPkg)) {
+                            val timeInFg = Math.min(stat.totalTimeInForeground, maxBucketDuration)
+                            if (timeInFg > 0L) {
+                                hourlyMs += timeInFg
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error querying hourly stats for hour $h", e)
+                }
+
+                val score = if (hourlyMs == 0L) {
+                    0.0f
+                } else {
+                    val hourlySessionHrs = hourlyMs.toFloat() / 3600000f
+                    val nSession = Math.min(1.0f, Math.max(0.0f, hourlySessionHrs / 1.0f))
+                    val nScroll = Math.min(1.0f, Math.max(0.0f, currentScroll / 250.0f))
+                    val nSwitch = Math.min(1.0f, Math.max(0.0f, currentSwitches / 20.0f))
+                    val nNight = if (h in 0..5) 1.0f else 0.0f
+
+                    val raw = (0.40f * nSession) + (0.20f * nScroll) + (0.20f * nSwitch) + (0.20f * nNight)
+                    val rounded = Math.round(raw * 100f) / 100f
+                    Math.min(1.0f, Math.max(0.05f, rounded))
+                }
+
+                buckets.add(HourlyBucketData(h, label, startTimeMs, endTimeMs, hourlyMs, score))
+            }
+
+            return buckets
         }
     }
 }

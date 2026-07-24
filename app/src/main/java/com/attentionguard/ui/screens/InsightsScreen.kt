@@ -201,86 +201,16 @@ fun InsightsScreen(
         skipFrequency
     }
     
-    val hourlyBaseline = listOf(0.45f, 0.25f, 0.15f, 0.45f, 0.58f, 0.42f, 0.65f, 0.52f, 0.45f)
-    val scaleFactor = if (activeApiScore > 0f) activeApiScore / 0.52f else 1f
-    
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val insightsViewModel = remember { com.attentionguard.ui.viewmodel.InsightsViewModel() }
+    val uiState by insightsViewModel.uiState.collectAsState()
 
-
-
-    // Group logs in a continuous 24-hour sliding window based on timestamps, blending in interpolated baseline fallbacks, bounded by todayStart
-    val hourlyTimestampedPoints = remember(dbLogs, scaleFactor, liveTimeMs, todayStart) {
-        val totalDuration = 24 * 3600000L
-        val step = 30 * 60000L // 30 minutes interval for smooth interpolation
-        
-        // Bounded start time: cannot go earlier than todayStart
-        val startTime = Math.max(liveTimeMs - totalDuration, todayStart)
-        val duration = Math.max(1000L, liveTimeMs - startTime)
-        val numSteps = (duration / step).toInt()
-        
-        val list = mutableListOf<TimestampedPoint>()
-        
-        // Helper to query score at specific timestamp
-        val getScoreAtTime = { t: Long ->
-            val closestLog = dbLogs.filter { log ->
-                log.timestamp >= todayStart && Math.abs(log.timestamp - t) <= 15 * 60000L
-            }.minByOrNull { Math.abs(it.timestamp - t) }
-            
-            if (closestLog != null) {
-                closestLog.apiScore
-            } else {
-                val cal = java.util.Calendar.getInstance().apply { timeInMillis = t }
-                val hourOfDay = cal.get(java.util.Calendar.HOUR_OF_DAY)
-                val lowIndex = hourOfDay / 3
-                val highIndex = Math.min(8, lowIndex + 1)
-                val fraction = (hourOfDay % 3) / 3f
-                val interpolatedBaseline = hourlyBaseline[lowIndex] * (1f - fraction) + hourlyBaseline[highIndex] * fraction
-                Math.min(1.0f, interpolatedBaseline * scaleFactor)
-            }
-        }
-        
-        // Add start point
-        list.add(TimestampedPoint(startTime, getScoreAtTime(startTime)))
-        
-        // Add intermediate steps
-        for (i in 1..numSteps) {
-            val t = startTime + i * step
-            if (t < liveTimeMs) {
-                list.add(TimestampedPoint(t, getScoreAtTime(t)))
-            }
-        }
-        
-        // Add end point
-        list.add(TimestampedPoint(liveTimeMs, getScoreAtTime(liveTimeMs)))
-        list
+    LaunchedEffect(dbLogs, useSimulatedData, liveTimeMs) {
+        insightsViewModel.refreshHourlyData(context, dbLogs, useSimulatedData)
     }
 
-    val chartStart = remember(liveTimeMs, todayStart) {
-        Math.max(liveTimeMs - 24 * 3600000L, todayStart)
-    }
-    val chartEnd = liveTimeMs
-    val chartDuration = remember(chartStart, chartEnd) {
-        Math.max(1000L, chartEnd - chartStart)
-    }
-
-    val peakTimestampedPoint = remember(hourlyTimestampedPoints) {
-        hourlyTimestampedPoints.maxByOrNull { it.value }
-    }
-
-    val peakHourText = remember(peakTimestampedPoint) {
-        if (peakTimestampedPoint != null) {
-            val cal = java.util.Calendar.getInstance().apply { timeInMillis = peakTimestampedPoint.timestamp }
-            val hrVal = cal.get(java.util.Calendar.HOUR_OF_DAY)
-            val amPm = if (hrVal >= 12) "PM" else "AM"
-            val displayHour = when {
-                hrVal == 0 -> 12
-                hrVal > 12 -> hrVal - 12
-                else -> hrVal
-            }
-            String.format("%02d:00 %s", displayHour, amPm)
-        } else {
-            "N/A"
-        }
-    }
+    val discreteHourlyPoints = uiState.hourlyPoints
+    val peakHourText = uiState.peakHourText
 
     // 2. Prepare Weekly Data (Day by Day)
     val dayNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
@@ -326,7 +256,7 @@ fun InsightsScreen(
 
     // Diagnostic logs for developers
     android.util.Log.d("AttentionGuardChart", "ChartType: $chartType | DB Logs: ${dbLogs.size} entries | Today's Logs: ${todayLogs.size} entries")
-    android.util.Log.d("AttentionGuardChart", "Hourly Points: ${hourlyTimestampedPoints.map { it.value }}")
+    android.util.Log.d("AttentionGuardChart", "Hourly Points: ${discreteHourlyPoints.map { it.apiScore }}")
     android.util.Log.d("AttentionGuardChart", "Weekly Points: ${weeklyPoints.map { "${it.label}=${it.value}" }}")
 
     Box(
@@ -534,13 +464,10 @@ fun InsightsScreen(
                                         }
 
                                         if (currentRenderType == "hourly") {
-                                            val points = hourlyTimestampedPoints.map { pt ->
-                                                val x = if (chartDuration > 0L) {
-                                                    (pt.timestamp - chartStart).toFloat() / chartDuration.toFloat() * w
-                                                } else {
-                                                    0f
-                                                }
-                                                Offset(x, h - (pt.value * h * chartProgress.value))
+                                            val points = discreteHourlyPoints.map { pt ->
+                                                val x = (pt.hourOfDay / 23f) * w
+                                                val y = if (pt.apiScore <= 0.0f) h else h - (pt.apiScore * h * chartProgress.value)
+                                                Offset(x, y)
                                             }
 
                                             if (points.isNotEmpty()) {
@@ -574,26 +501,23 @@ fun InsightsScreen(
                                                     )
                                                 )
 
-                                                if (peakTimestampedPoint != null) {
-                                                     val highlightX = if (chartDuration > 0L) {
-                                                         (peakTimestampedPoint.timestamp - chartStart).toFloat() / chartDuration.toFloat() * w
-                                                     } else {
-                                                         0f
-                                                     }
-                                                     val highlightY = h - (peakTimestampedPoint.value * h * chartProgress.value)
-                                                     if (highlightX in 0f..w) {
-                                                         drawCircle(
-                                                             color = themeColor,
-                                                             radius = 15f * chartProgress.value,
-                                                             center = Offset(highlightX, highlightY),
-                                                             style = Stroke(width = 4f * chartProgress.value)
-                                                         )
-                                                         drawCircle(
-                                                             color = themeColor,
-                                                             radius = 6f * chartProgress.value,
-                                                             center = Offset(highlightX, highlightY)
-                                                         )
-                                                     }
+                                                if (peakHourText != "N/A") {
+                                                    val peakPt = discreteHourlyPoints.find { it.label == peakHourText } ?: discreteHourlyPoints.maxByOrNull { it.durationMs }
+                                                    if (peakPt != null && peakPt.durationMs > 0L) {
+                                                        val highlightX = (peakPt.hourOfDay / 23f) * w
+                                                        val highlightY = h - (peakPt.apiScore * h * chartProgress.value)
+                                                        drawCircle(
+                                                            color = themeColor,
+                                                            radius = 15f * chartProgress.value,
+                                                            center = Offset(highlightX, highlightY),
+                                                            style = Stroke(width = 4f * chartProgress.value)
+                                                        )
+                                                        drawCircle(
+                                                            color = themeColor,
+                                                            radius = 6f * chartProgress.value,
+                                                            center = Offset(highlightX, highlightY)
+                                                        )
+                                                    }
                                                 }
                                             }
                                         } else {
@@ -630,85 +554,30 @@ fun InsightsScreen(
                                         .padding(top = 4.dp)
                                 ) {
                                     if (currentRenderType == "hourly") {
-                                         // Dynamic continuous X labels drift & fade-in/fade-out
-                                         val totalSpanHours = (liveTimeMs - chartStart) / 3600000f
-                                         val effectiveLabelStep = if (totalSpanHours <= 5f) {
-                                             1
-                                         } else if (chartScale > 3.0f) {
-                                             1
-                                         } else if (chartScale > 1.5f) {
-                                             3
-                                         } else {
-                                             6
-                                         }
-                                         val hourMarks = remember(liveTimeMs, effectiveLabelStep, chartStart) {
-                                             val startTime = chartStart
-                                             val marks = mutableListOf<Pair<Long, String>>()
-                                             
-                                             val cal = java.util.Calendar.getInstance().apply {
-                                                 timeInMillis = startTime
-                                                 set(java.util.Calendar.MINUTE, 0)
-                                                 set(java.util.Calendar.SECOND, 0)
-                                                 set(java.util.Calendar.MILLISECOND, 0)
-                                             }
-                                             if (cal.timeInMillis < startTime) {
-                                                 cal.add(java.util.Calendar.HOUR_OF_DAY, 1)
-                                             }
-                                             
-                                             while (cal.timeInMillis <= liveTimeMs) {
-                                                 val t = cal.timeInMillis
-                                                 val hourVal = cal.get(java.util.Calendar.HOUR_OF_DAY)
-                                                 if (hourVal % effectiveLabelStep == 0) {
-                                                     val label = when {
-                                                         hourVal == 0 || hourVal == 24 -> "12 AM"
-                                                         hourVal == 12 -> "12 PM"
-                                                         hourVal > 12 -> "${hourVal - 12} PM"
-                                                         else -> "$hourVal AM"
-                                                     }
-                                                     marks.add(t to label)
-                                                 }
-                                                 cal.add(java.util.Calendar.HOUR_OF_DAY, 1)
-                                             }
-                                             marks
-                                         }
-
-                                         hourMarks.forEachIndexed { index, (timestamp, time) ->
-                                             val rawXFraction = if (chartDuration > 0L) {
-                                                 (timestamp - chartStart).toFloat() / chartDuration.toFloat()
-                                             } else {
-                                                 0f
-                                             }
-                                             
-                                             val xPosDp = chartWidth * rawXFraction
-                                             val boundaryThresholdDp = 36.dp
-                                             
-                                             var alpha = when {
-                                                 xPosDp < 0.dp || xPosDp > chartWidth -> 0f
-                                                 xPosDp < boundaryThresholdDp -> (xPosDp / boundaryThresholdDp)
-                                                 xPosDp > chartWidth - boundaryThresholdDp -> ((chartWidth - xPosDp) / boundaryThresholdDp)
-                                                 else -> 1f
-                                             }.coerceIn(0f, 1f)
-                                             
-                                             if (index == 0 && hourMarks.size <= 2 && xPosDp in 0.dp..chartWidth) {
-                                                 alpha = alpha.coerceAtLeast(0.4f)
-                                             }
-                                            
-                                            if (alpha > 0.01f) {
-                                                Text(
-                                                    text = time,
-                                                    fontSize = 9.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = SecondaryGray.copy(alpha = alpha),
-                                                    modifier = Modifier.layout { measurable, constraints ->
-                                                        val placeable = measurable.measure(constraints)
-                                                        layout(placeable.width, placeable.height) {
-                                                            val wPx = chartWidth.toPx()
-                                                            val xPos = (rawXFraction * wPx) - (placeable.width / 2f)
-                                                            placeable.placeRelative(xPos.toInt(), 0)
-                                                        }
-                                                    }
-                                                )
+                                        val labelHours = listOf(0, 4, 8, 12, 16, 20, 23)
+                                        labelHours.forEach { hr ->
+                                            val labelText = when (hr) {
+                                                0 -> "12 AM"
+                                                12 -> "12 PM"
+                                                23 -> "11 PM"
+                                                else -> if (hr > 12) "${hr - 12} PM" else "$hr AM"
                                             }
+                                            val rawXFraction = hr / 23f
+
+                                            Text(
+                                                text = labelText,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = SecondaryGray,
+                                                modifier = Modifier.layout { measurable, constraints ->
+                                                    val placeable = measurable.measure(constraints)
+                                                    layout(placeable.width, placeable.height) {
+                                                        val wPx = chartWidth.toPx()
+                                                        val xPos = (rawXFraction * wPx) - (placeable.width / 2f)
+                                                        placeable.placeRelative(xPos.toInt(), 0)
+                                                    }
+                                                }
+                                            )
                                         }
                                     } else {
                                         val numBars = weeklyPoints.size
