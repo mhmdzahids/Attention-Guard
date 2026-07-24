@@ -40,7 +40,8 @@ fun SettingsScreen(
     onLatencyChanged: (Float) -> Unit,
     nightRatio: Float,
     onNightChanged: (Float) -> Unit,
-    onSeedTestData: () -> Unit
+    onSeedTestData: () -> Unit,
+    onTriggerNudgeModal: () -> Unit
 ) {
     val scrollState = rememberScrollState()
 
@@ -267,6 +268,37 @@ fun SettingsScreen(
                     ) {
                         Text(
                             text = "Seed 8 Hourly Logs",
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Trigger Attention Nudge Pop-up",
+                        fontWeight = FontWeight.Bold,
+                        color = OnSurfaceDark,
+                        fontSize = 14.sp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Text(
+                        text = "Simulate a late-night scrolling warning pop-up. This will calculate the real scrolling percentage from the database logs and open the Nudge modal directly.",
+                        color = SecondaryGray,
+                        fontSize = 12.sp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Button(
+                        onClick = onTriggerNudgeModal,
+                        colors = ButtonDefaults.buttonColors(containerColor = RiskModerate),
+                        shape = RoundedCornerShape(100.dp),
+                        modifier = Modifier.fillMaxWidth().height(44.dp)
+                    ) {
+                        Text(
+                            text = "Trigger Nudge Modal",
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp

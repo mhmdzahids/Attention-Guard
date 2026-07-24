@@ -167,7 +167,33 @@ Hari ini telah diselesaikan serangkaian optimalisasi kode dan perbaikan bug arsi
 
 ---
 
-## 3. Hal-hal yang Dapat Disempurnakan di Masa Mendatang (Future Improvements)
+## 3. Catatan Kerja Terperinci & Perbaikan Bug (Kamis, 23 Juli 2026)
+
+Hari ini telah diimplementasikan optimalisasi tampilan antarmuka (UI) dan logika alur kustomisasi rencana pencegahan (prevention plan) sesuai hasil ekstraksi desain Google Stitch.
+
+### Laporan Perbaikan Berdasarkan Garis Waktu (Timeline)
+
+#### 🕒 Pukul 15:43 WIB | Integrasi State Meditate Screen & Redesain Overlay (Confirm Activation)
+*   **Perbaikan**:
+    *   Membangun ulang [MeditateScreen.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/ui/screens/MeditateScreen.kt) untuk mendukung rendering dinamis berbasis state `isPlanActive`.
+    *   Mengimplementasikan UI Meditate aktif lengkap dengan spanduk status hijau (`#31A24C`), indikator berdenyut (*pulsing dot*), kartu progres fokus (20% linear indicator), serta bagan Canvas kurva bezier kontinu untuk prediksi pemulihan atensi.
+    *   Membungkus alur tombol aksi: *"Modify Plan"* me-reset status rencana, dan *"View Dashboard"* memicu transisi pager ke halaman dashboard awal (index 0).
+    *   Menghubungkan state penanda di [MainActivity.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/MainActivity.kt) untuk mensinkronkan konfirmasi overlay ke visual Meditate screen.
+
+#### 🕒 Pukul 22:49 WIB | Checkbox Lingkaran & Logika Seleksi Saling Eksklusif (Mutually Exclusive Checklist)
+*   **Perbaikan**:
+    *   **Circular Checkbox**: Membuat komponen `@Composable fun CircularCheckbox` berbasis `CircleShape` di [Modals.kt](file:///c:/Users/Zahid/Attention-Guard/app/src/main/java/com/attentionguard/ui/components/Modals.kt) menggantikan kotak centang bersudut kaku agar selaras dengan desain CSS `rounded-full`.
+    *   **Mutual Exclusivity Logic**: Menyisipkan pencegah bentrok pilihan di mana mencentang kartu *"Let the system decide"* otomatis meng-uncheck opsi *Micro-Breaks*, *Window Lock*, dan *Mini-Games*, serta sebaliknya.
+    *   **Resolusi Teks Badge**: Memberikan pembatas `maxLines = 1` dan penanganan `Modifier.weight` pada judul kolom agar lencana emas *"Recommended"* tampil lurus horizontal dan tidak terlipat secara vertikal di perangkat fisik Xiaomi.
+
+#### 🕒 Pukul 22:59 WIB | Redesain Penempatan Lencana Melayang (Overlapping Badge) & Casing Update
+*   **Perbaikan**:
+    *   **Overlapping Badge (99+ style)**: Membungkus kartu checkbox dengan `Box` dan menambahkan `padding(top = 8.dp)` untuk memberikan celah aman bagi lencana emas agar tidak terpotong. Menaruh lencana `Recommended` melayang di sudut kanan atas kartu dengan offset `x = -16.dp` dan `y = -8.dp` (mengikuti gaya lencana notifikasi inbox).
+    *   **Title Casing Update**: Mengubah penulisan judul utama opsi rekomendasi dari *"Let the system decide"* menjadi *"Let The System Decide"* (Title Case) agar serasi dengan konvensi penulisan antarmuka Meta Design System.
+
+---
+
+## 4. Hal-hal yang Dapat Disempurnakan di Masa Mendatang (Future Improvements)
 
 *   **Pembersihan Log Database Berkala**: Mekanisme penghapusan log lokal Room yang berusia lebih dari 30 hari secara otomatis melalui WorkManager.
 *   **Model CNN-LSTM On-Device**: Pengeksporan model deep learning CNN-LSTM berbasis TensorFlow Lite (TFLite) untuk dijalankan secara lokal di perangkat guna mendeteksi status atensi kognitif runut-waktu secara cerdas.

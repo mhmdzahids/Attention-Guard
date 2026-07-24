@@ -1,0 +1,250 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>MindState | Attention Alert</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface-variant": "#424754",
+                    "tertiary-container": "#8f6100",
+                    "inverse-primary": "#afc6ff",
+                    "surface-container-high": "#e8e8ec",
+                    "surface-container": "#ededf1",
+                    "on-tertiary-fixed": "#281800",
+                    "ink-button": "#000000",
+                    "on-error": "#ffffff",
+                    "surface-dim": "#d9dade",
+                    "tertiary-fixed-dim": "#ffba42",
+                    "on-secondary-fixed-variant": "#474747",
+                    "error-container": "#ffdad6",
+                    "on-surface": "#1a1c1f",
+                    "primary-fixed": "#d9e2ff",
+                    "commerce-cobalt": "#0064E0",
+                    "on-primary": "#ffffff",
+                    "promo-gold": "#F7B928",
+                    "warning-yellow": "#F2A918",
+                    "tertiary": "#6f4b00",
+                    "critical-red": "#E41E3F",
+                    "on-secondary": "#ffffff",
+                    "outline-variant": "#c2c6d6",
+                    "tertiary-fixed": "#ffddaf",
+                    "on-primary-fixed-variant": "#004299",
+                    "primary-fixed-dim": "#afc6ff",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-bright": "#f9f9fd",
+                    "surface-container-low": "#f3f3f7",
+                    "outline": "#727786",
+                    "hairline-soft": "#DEE3E9",
+                    "surface-variant": "#e2e2e6",
+                    "inverse-surface": "#2f3034",
+                    "secondary-fixed-dim": "#c6c6c6",
+                    "hairline": "#CED0D4",
+                    "on-error-container": "#93000a",
+                    "secondary-container": "#e2e2e2",
+                    "background": "#f9f9fd",
+                    "surface-soft": "#F1F4F7",
+                    "on-tertiary-fixed-variant": "#614000",
+                    "on-secondary-container": "#646464",
+                    "on-secondary-fixed": "#1b1b1b",
+                    "fb-blue": "#1876F2",
+                    "commerce-cobalt-deep": "#0457CB",
+                    "error": "#ba1a1a",
+                    "on-background": "#1a1c1f",
+                    "on-tertiary-container": "#ffe8ca",
+                    "on-primary-fixed": "#001944",
+                    "surface-tint": "#0059c8",
+                    "secondary-fixed": "#e2e2e2",
+                    "secondary": "#5e5e5e",
+                    "primary": "#004db0",
+                    "surface-container-highest": "#e2e2e6",
+                    "on-tertiary": "#ffffff",
+                    "surface": "#f9f9fd",
+                    "on-primary-container": "#e6ebff",
+                    "inverse-on-surface": "#f0f0f4",
+                    "primary-fixed-dim": "#afc6ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "xxxl": "32px",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "xxxl": "40px",
+                    "xs": "8px",
+                    "hero": "120px",
+                    "xl": "24px",
+                    "section": "64px",
+                    "lg": "20px",
+                    "sm": "10px",
+                    "base": "16px",
+                    "xxs": "4px",
+                    "xxl": "32px",
+                    "md": "12px"
+            },
+            "fontFamily": {
+                    "heading-md": ["Be Vietnam Pro"],
+                    "body-md-bold": ["Be Vietnam Pro"],
+                    "button-md": ["Be Vietnam Pro"],
+                    "heading-sm": ["Be Vietnam Pro"],
+                    "display-lg": ["Be Vietnam Pro"],
+                    "caption": ["Be Vietnam Pro"],
+                    "subtitle-lg": ["Be Vietnam Pro"],
+                    "body-sm": ["Be Vietnam Pro"],
+                    "hero-display": ["Be Vietnam Pro"],
+                    "body-md": ["Be Vietnam Pro"],
+                    "heading-lg": ["Be Vietnam Pro"]
+            },
+            "fontSize": {
+                    "heading-md": ["28px", {"lineHeight": "1.21", "letterSpacing": "0px", "fontWeight": "300"}],
+                    "body-md-bold": ["16px", {"lineHeight": "1.50", "letterSpacing": "-0.16px", "fontWeight": "700"}],
+                    "button-md": ["14px", {"lineHeight": "1.43", "letterSpacing": "-0.14px", "fontWeight": "700"}],
+                    "heading-sm": ["24px", {"lineHeight": "1.25", "letterSpacing": "0px", "fontWeight": "500"}],
+                    "display-lg": ["48px", {"lineHeight": "1.17", "letterSpacing": "0px", "fontWeight": "500"}],
+                    "caption": ["12px", {"lineHeight": "1.33", "letterSpacing": "0px", "fontWeight": "400"}],
+                    "subtitle-lg": ["18px", {"lineHeight": "1.44", "letterSpacing": "0px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "1.43", "letterSpacing": "-0.14px", "fontWeight": "400"}],
+                    "hero-display": ["64px", {"lineHeight": "1.16", "letterSpacing": "0px", "fontWeight": "500"}],
+                    "body-md": ["16px", {"lineHeight": "1.50", "letterSpacing": "-0.16px", "fontWeight": "400"}],
+                    "heading-lg": ["36px", {"lineHeight": "1.28", "letterSpacing": "0px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #ffffff;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            overflow: hidden;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-surface">
+<!-- Full-screen Modal Overlay -->
+<main class="fixed inset-0 z-50 flex flex-col items-center overflow-y-auto bg-surface">
+<!-- Top Close Button -->
+<div class="w-full max-w-2xl px-base pt-section flex justify-end pb-xl">
+<button class="w-xxl h-xxl rounded-full bg-surface-container-low flex items-center justify-center hover:bg-surface-container-high transition-colors active:scale-95">
+<span class="material-symbols-outlined text-on-surface">close</span>
+</button>
+</div>
+<!-- Content Container -->
+<div class="w-full max-w-2xl px-base flex flex-col items-center pb-xl">
+<!-- Hero Card -->
+
+<!-- Suggested Steps -->
+<section class="w-full mt-section animate-fade-in" style="animation-delay: 0.2s">
+<div class="flex items-center gap-xs mb-xl px-xs">
+  
+  <h2 class="font-heading-sm text-heading-sm text-on-surface">Customize your plan</h2>
+</div>
+<div class="space-y-md">
+<!-- Checklist Card 1 -->
+<label class="flex items-center p-base border border-hairline-soft rounded-xl hover:bg-surface-container-lowest transition-all cursor-pointer group active:scale-[0.98] bg-white">
+<input class="w-xl h-xl rounded-full border-2 border-outline text-commerce-cobalt focus:ring-commerce-cobalt focus:ring-offset-0 transition-all checked:bg-commerce-cobalt mr-base" type="checkbox">
+<div class="flex-1">
+<h3 class="font-body-md-bold text-body-md-bold text-on-surface">Enable Micro-Breaks</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">System-wide 30-second haptic nudges every 25 minutes.</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-commerce-cobalt transition-colors">timer</span>
+</label>
+<!-- Checklist Card 2 -->
+<label class="flex items-center p-base border border-hairline-soft rounded-xl hover:bg-surface-container-lowest transition-all cursor-pointer group active:scale-[0.98] bg-white">
+<input class="w-xl h-xl rounded-full border-2 border-outline text-commerce-cobalt focus:ring-commerce-cobalt focus:ring-offset-0 transition-all checked:bg-commerce-cobalt mr-base" type="checkbox">
+<div class="flex-1">
+<h3 class="font-body-md-bold text-body-md-bold text-on-surface">Late-Night Window Lock</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Restrict non-essential tabs from 11 PM to 6 AM.</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-commerce-cobalt transition-colors">bedtime</span>
+</label>
+<!-- Checklist Card 3 -->
+<label class="flex items-center p-base border border-hairline-soft rounded-xl hover:bg-surface-container-lowest transition-all cursor-pointer group active:scale-[0.98] bg-white">
+<input class="w-xl h-xl rounded-full border-2 border-outline text-commerce-cobalt focus:ring-commerce-cobalt focus:ring-offset-0 transition-all checked:bg-commerce-cobalt mr-base" type="checkbox">
+<div class="flex-1">
+<h3 class="font-body-md-bold text-body-md-bold text-on-surface">Focus Mini-Games</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Short, science-backed games to reset neural pathways during high cognitive load.</p>
+</div>
+<span class="material-symbols-outlined text-outline group-hover:text-commerce-cobalt transition-colors">videogame_asset</span>
+</label>
+<label class="flex items-center p-base border-2 border-commerce-cobalt rounded-xl bg-surface-container-low transition-all cursor-pointer group active:scale-[0.98] relative">
+<input class="w-xl h-xl rounded-full border-2 border-outline text-commerce-cobalt focus:ring-commerce-cobalt focus:ring-offset-0 transition-all checked:bg-commerce-cobalt mr-base" type="checkbox" checked="">
+<div class="flex-1">
+<div class="flex items-center gap-xs mb-xxs">
+<h3 class="font-body-md-bold text-body-md-bold text-on-surface">Let the system decide</h3>
+<span class="px-xs py-0.5 bg-promo-gold text-on-tertiary-fixed text-caption rounded-full font-body-sm">Recommended</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">AI-optimized protection based on your unique behavioral patterns and fatigue signals.</p>
+</div>
+<img src="https://lh3.googleusercontent.com/aida-public/AB6AXuCQzcd3afs9v4ZJ9a20JIG2gI2ZU_orZQZwhPWAC-Ba1eGan_bx-9_qNEfCsN3Kxa9yjK254-yRH53yN1PCBiEhUYgbzUZTyviLgjVbvDvSxK9tISqNUV94h5KR_tw-p_Fxf0vUx1iBVTxQV-T1E7jNoQzIk1kxxJ0IOf5rmX3QZY6TmSLWSfhLIBwq2zxgxH_PlQayceKimE_0CB2cr23EF6K7fSgIU_zHGXjLzgLtUg1-A_a4XBj47A" alt="Wellness Icon" class="w-6 h-6 object-contain opacity-40 group-hover:opacity-100 transition-all">
+</label></div>
+</section>
+<!-- Bottom Action Cluster -->
+<section class="w-full mt-hero flex flex-col gap-base animate-fade-in" style="animation-delay: 0.3s">
+<button class="w-full h-[56px] bg-ink-button text-white rounded-full font-button-md text-button-md hover:opacity-90 active:scale-[0.97] transition-all shadow-sm">Confirm Activation</button>
+<button class="w-full h-[56px] border-2 border-on-surface text-on-surface rounded-full font-button-md text-button-md hover:bg-surface-container-low active:scale-[0.97] transition-all">
+                    Remind Me Later
+                </button>
+</section>
+</div>
+</main>
+<!-- Background Atmospheric Effect -->
+<div class="fixed inset-0 -z-10 bg-surface-container-lowest opacity-40 pointer-events-none">
+
+</div>
+<script>
+        // Micro-interactions for checklist cards
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const parent = this.closest('label');
+                if (this.checked) {
+                    parent.classList.add('border-commerce-cobalt', 'bg-surface-container-low');
+                    parent.classList.remove('bg-white');
+                } else {
+                    parent.classList.remove('border-commerce-cobalt', 'bg-surface-container-low');
+                    parent.classList.add('bg-white');
+                }
+            });
+        });
+
+        // Close action simulation
+        document.querySelector('button .material-symbols-outlined').parentElement.addEventListener('click', () => {
+            document.querySelector('main').style.opacity = '0';
+            document.querySelector('main').style.transform = 'scale(0.95)';
+            document.querySelector('main').style.transition = 'all 0.4s ease-in-out';
+            setTimeout(() => {
+                alert('Closing State. In a real app, this would route back.');
+            }, 400);
+        });
+    </script>
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>
