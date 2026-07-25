@@ -685,11 +685,11 @@ fun InsightsScreen(
                                 )
                             }
                             
-                            // Hourly score disclaimer — explains data source limitations
+                            // Hourly score disclaimer — explains data source and accuracy
                             if (currentRenderType == "hourly" && !useSimulatedData) {
                                 Text(
-                                    text = "ℹ️ Skor per-jam mencerminkan intensitas sesi & rasio malam. " +
-                                           "Data scroll/switch tidak tersimpan per-jam (hanya jam aktif saat ini yang menggunakannya).",
+                                    text = "ℹ️ Skor per-jam diambil dari rata-rata log yang tersimpan di database pada jam tersebut. " +
+                                           "Setiap log mencakup sesi, scroll, switch, & rasio malam saat log ditulis — data historis tidak berubah setelah waktunya berlalu.",
                                     color = SecondaryGray.copy(alpha = 0.75f),
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Medium,
