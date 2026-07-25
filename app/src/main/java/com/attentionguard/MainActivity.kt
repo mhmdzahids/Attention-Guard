@@ -128,7 +128,18 @@ fun MainAppScaffold() {
 
     val context = LocalContext.current
     val database = remember { AppDatabase.getDatabase(context) }
-    val dbLogs by database.attentionLogDao().getAllLogsFlow().collectAsState(initial = emptyList())
+    // Compute midnight of today so getAllLogsFlow returns every log from 00:00 onward.
+    // Previously LIMIT 150 (≈2.5 h at 1 log/min) caused early-morning chart buckets to
+    // disappear by mid-day as newer logs pushed old ones out of the 150-row window.
+    val todayStartMs = remember {
+        java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
+    }
+    val dbLogs by database.attentionLogDao().getAllLogsFlow(todayStartMs).collectAsState(initial = emptyList())
     
     var useSimulatedData by remember { mutableStateOf(AttentionMonitoringService.useSimulatedData) }
     

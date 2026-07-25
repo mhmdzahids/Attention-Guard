@@ -8,8 +8,11 @@ interface AttentionLogDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLog(log: AttentionLog)
 
-    @Query("SELECT * FROM attention_logs ORDER BY timestamp DESC LIMIT 150")
-    fun getAllLogsFlow(): Flow<List<AttentionLog>>
+    // Returns ALL logs for today (from midnight onward).
+    // Previously used LIMIT 150 which at 1 log/min only covered ~2.5 hours, causing early-morning
+    // buckets to fall outside the window and show as flat "Low" by mid-day.
+    @Query("SELECT * FROM attention_logs WHERE timestamp >= :startOfDay ORDER BY timestamp DESC")
+    fun getAllLogsFlow(startOfDay: Long): Flow<List<AttentionLog>>
 
     @Query("SELECT * FROM attention_logs ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLatestLog(): AttentionLog?
