@@ -149,7 +149,10 @@ fun MainAppScaffold() {
     var isYoutubeInstalled by remember { mutableStateOf(AttentionMonitoringService.isYoutubeInstalled) }
     var isInstagramInstalled by remember { mutableStateOf(AttentionMonitoringService.isInstagramInstalled) }
     var isTiktokInstalled by remember { mutableStateOf(AttentionMonitoringService.isTiktokInstalled) }
-    var isPreventionPlanActive by remember { mutableStateOf(false) }
+    var isPreventionPlanActive by remember { mutableStateOf(AttentionMonitoringService.isPreventionPlanActive) }
+    var isMicroBreaksEnabled by remember { mutableStateOf(AttentionMonitoringService.isMicroBreaksEnabled) }
+    var isNighttimeLockoutEnabled by remember { mutableStateOf(AttentionMonitoringService.isNighttimeLockoutEnabled) }
+    var isTestModeEnabled by remember { mutableStateOf(AttentionMonitoringService.isTestModeEnabled) }
 
     // Calculated state
     var apiScore by remember { mutableStateOf(0.52f) }
@@ -597,8 +600,13 @@ fun MainAppScaffold() {
                             apiScore = apiScore,
                             riskTier = riskTier,
                             isPlanActive = isPreventionPlanActive,
+                            isMicroBreaksEnabled = isMicroBreaksEnabled,
+                            isNighttimeLockoutEnabled = isNighttimeLockoutEnabled,
                             onActivatePlan = { showOverlayModal = true },
-                            onModifyPlan = { isPreventionPlanActive = false },
+                            onModifyPlan = {
+                                isPreventionPlanActive = false
+                                AttentionMonitoringService.isPreventionPlanActive = false
+                            },
                             onViewDashboard = {
                                 coroutineScope.launch {
                                     try {
@@ -636,6 +644,11 @@ fun MainAppScaffold() {
                                 )
                             }
                         },
+                        isTestModeEnabled = isTestModeEnabled,
+                        onTestModeToggled = { enabled ->
+                            isTestModeEnabled = enabled
+                            AttentionMonitoringService.isTestModeEnabled = enabled
+                        },
                         sessionDuration = sessionDuration,
                         onSessionChanged = { sessionDuration = it; onSignalChanged() },
                         launchFrequency = launchFrequency,
@@ -671,8 +684,13 @@ fun MainAppScaffold() {
                     PreventionPlanOverlayModal(
                         apiScore = apiScore,
                         onDismiss = { showOverlayModal = false },
-                        onActivate = {
+                        onActivate = { microBreaks, nightLock ->
+                            isMicroBreaksEnabled = microBreaks
+                            AttentionMonitoringService.isMicroBreaksEnabled = microBreaks
+                            isNighttimeLockoutEnabled = nightLock
+                            AttentionMonitoringService.isNighttimeLockoutEnabled = nightLock
                             isPreventionPlanActive = true
+                            AttentionMonitoringService.isPreventionPlanActive = true
                             showOverlayModal = false
                             coroutineScope.launch {
                                 val targetIndex = tabs.indexOfFirst { it.id == "meditate" }

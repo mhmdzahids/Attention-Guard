@@ -30,10 +30,10 @@ class AttentionCalculationWorker(
             val nSwitch = Math.min(1.0f, Math.max(0.0f, switches / 20.0f))
             val nNight = Math.min(1.0f, Math.max(0.0f, night))
 
-            // 3. Compute API Score
+            // 3. Compute API Score using the canonical formula shared across all call-sites.
             // Formula: API = (0.30 * N(session)) + (0.20 * N(scroll)) + (0.30 * N(switch)) + (0.20 * N(night))
-            val rawScore = (0.30f * nSession) + (0.20f * nScroll) + (0.30f * nSwitch) + (0.20f * nNight)
-            val score = Math.round(rawScore * 100f) / 100f
+            // Section 4.4: w1=w3=0.30 (largest effect size).
+            val score = AttentionMonitoringService.computeApiScore(nSession, nScroll, nSwitch, nNight)
 
             val risk = when {
                 score < 0.35f -> "low"

@@ -37,7 +37,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
 
 data class ChartPoint(val label: String, val value: Float)
-data class TimestampedPoint(val timestamp: Long, val value: Float)
+// TimestampedPoint removed — was dead code from a previous architecture (never instantiated).
 
 @Composable
 fun InsightsScreen(
@@ -65,7 +65,12 @@ fun InsightsScreen(
     LaunchedEffect(Unit) {
         while (true) {
             liveTimeMs = System.currentTimeMillis()
-            kotlinx.coroutines.delay(1000L)
+            // 60-second interval is sufficient for updating the "Live" hour label and
+            // today-boundary check. Keeping this at 1 s used to cause refreshHourlyData()
+            // to fire every second (see LaunchedEffect below), re-computing all 24 chart
+            // points with the user's instantaneous scroll velocity — making historical
+            // buckets fluctuate in real-time. That coupling is now broken.
+            kotlinx.coroutines.delay(60_000L)
         }
     }
     
@@ -205,18 +210,33 @@ fun InsightsScreen(
     val insightsViewModel = remember { com.attentionguard.ui.viewmodel.InsightsViewModel() }
     val uiState by insightsViewModel.uiState.collectAsState()
 
-    LaunchedEffect(dbLogs, useSimulatedData, liveTimeMs) {
+    // Refresh hourly data only when DB logs or mode change — NOT on every clock tick.
+    // liveTimeMs is intentionally excluded from this key: it only drives UI clock labels,
+    // not historical data computation. Historical buckets are immutable once the hour passes.
+    LaunchedEffect(dbLogs, useSimulatedData) {
         insightsViewModel.refreshHourlyData(context, dbLogs, useSimulatedData)
     }
 
+    val currentLiveHour = remember(liveTimeMs) {
+        java.time.ZonedDateTime.now(java.time.ZoneId.systemDefault()).hour
+    }
+
     val discreteHourlyPoints = uiState.hourlyPoints
+    val activeDiscretePoints: List<com.attentionguard.ui.viewmodel.DiscreteHourlyPoint> = remember(discreteHourlyPoints, currentLiveHour) {
+        discreteHourlyPoints.filter { it.hourOfDay <= currentLiveHour }
+    }
+    val maxHourSpan = Math.max(1f, currentLiveHour.toFloat())
     val peakHourText = uiState.peakHourText
 
     // 2. Prepare Weekly Data (Day by Day)
     val dayNames = listOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
     val fullDayNames = listOf("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
     
-    val weeklyBaselines = listOf(2.4f, 3.1f, 1.8f, 2.9f, 4.2f, 3.5f, activeSessionDuration)
+    // FIXED: The 7th element previously used `activeSessionDuration` (a live value), which caused
+    // today's bar in the Weekly chart to fluctuate whenever there were no DB logs yet for today.
+    // Replaced with 0f so a day with no logs always renders as empty, consistent with the strict
+    // zero-fill policy used in the Hourly chart.
+    val weeklyBaselines = listOf(2.4f, 3.1f, 1.8f, 2.9f, 4.2f, 3.5f, 0f)
     
     val weeklyPoints = remember(dbLogs, activeSessionDuration) {
         (0..6).map { i ->
@@ -464,8 +484,8 @@ fun InsightsScreen(
                                         }
 
                                         if (currentRenderType == "hourly") {
-                                            val points = discreteHourlyPoints.map { pt ->
-                                                val x = (pt.hourOfDay / 23f) * w
+                                            val points = activeDiscretePoints.map { pt ->
+                                                val x = (pt.hourOfDay.toFloat() / maxHourSpan) * w
                                                 val y = if (pt.apiScore <= 0.0f) h else h - (pt.apiScore * h * chartProgress.value)
                                                 Offset(x, y)
                                             }
@@ -502,10 +522,13 @@ fun InsightsScreen(
                                                 )
 
                                                 if (peakHourText != "N/A") {
-                                                    val peakPt = discreteHourlyPoints.find { it.label == peakHourText } ?: discreteHourlyPoints.maxByOrNull { it.durationMs }
-                                                    if (peakPt != null && peakPt.durationMs > 0L) {
-                                                        val highlightX = (peakPt.hourOfDay / 23f) * w
-                                                        val highlightY = h - (peakPt.apiScore * h * chartProgress.value)
+                                                    // Match by label (both use the same "%02d:00 %s" format).
+                                                    // Fallback uses apiScore — consistent with how peakHourText is derived in the ViewModel.
+                                                    val peakPt = activeDiscretePoints.find { it.label == peakHourText }
+                                                        ?: activeDiscretePoints.maxByOrNull { it.apiScore }
+                                                    if (peakPt != null && peakPt.hourOfDay <= currentLiveHour && (peakPt.durationMs > 0L || peakPt.apiScore > 0f)) {
+                                                        val highlightX = (peakPt.hourOfDay.toFloat() / maxHourSpan) * w
+                                                        val highlightY = if (peakPt.apiScore <= 0.0f) h else h - (peakPt.apiScore * h * chartProgress.value)
                                                         drawCircle(
                                                             color = themeColor,
                                                             radius = 15f * chartProgress.value,
@@ -554,15 +577,33 @@ fun InsightsScreen(
                                         .padding(top = 4.dp)
                                 ) {
                                     if (currentRenderType == "hourly") {
-                                        val labelHours = listOf(0, 4, 8, 12, 16, 20, 23)
-                                        labelHours.forEach { hr ->
-                                            val labelText = when (hr) {
-                                                0 -> "12 AM"
-                                                12 -> "12 PM"
-                                                23 -> "11 PM"
+                                        val dpPerHourVal = chartWidth.value / maxHourSpan
+                                        val step = when {
+                                            dpPerHourVal >= 48f -> 1
+                                            dpPerHourVal >= 24f -> 2
+                                            dpPerHourVal >= 12f -> 3
+                                            else -> 6
+                                        }
+
+                                        val routineCandidates = (0 until currentLiveHour).filter { it % step == 0 }
+                                        val minGap = 50f
+                                        val filteredRoutine = routineCandidates.filter { hr ->
+                                            (currentLiveHour - hr) * dpPerHourVal >= minGap
+                                        }
+
+                                        val markHours = (filteredRoutine + listOf(currentLiveHour)).distinct().sorted()
+
+                                        markHours.forEach { hr ->
+                                            val labelText = when {
+                                                hr == currentLiveHour && hr != 0 -> {
+                                                    val hrStr = if (hr == 12) "12 PM" else if (hr > 12) "${hr - 12} PM" else "$hr AM"
+                                                    "$hrStr Live"
+                                                }
+                                                hr == 0 -> "12 AM"
+                                                hr == 12 -> "12 PM"
                                                 else -> if (hr > 12) "${hr - 12} PM" else "$hr AM"
                                             }
-                                            val rawXFraction = hr / 23f
+                                            val rawXFraction = hr.toFloat() / maxHourSpan
 
                                             Text(
                                                 text = labelText,
@@ -574,7 +615,8 @@ fun InsightsScreen(
                                                     layout(placeable.width, placeable.height) {
                                                         val wPx = chartWidth.toPx()
                                                         val xPos = (rawXFraction * wPx) - (placeable.width / 2f)
-                                                        placeable.placeRelative(xPos.toInt(), 0)
+                                                        val clampedX = xPos.coerceIn(0f, wPx - placeable.width)
+                                                        placeable.placeRelative(clampedX.toInt(), 0)
                                                     }
                                                 }
                                             )
@@ -643,6 +685,20 @@ fun InsightsScreen(
                                 )
                             }
                             
+                            // Hourly score disclaimer — explains data source limitations
+                            if (currentRenderType == "hourly" && !useSimulatedData) {
+                                Text(
+                                    text = "ℹ️ Skor per-jam mencerminkan intensitas sesi & rasio malam. " +
+                                           "Data scroll/switch tidak tersimpan per-jam (hanya jam aktif saat ini yang menggunakannya).",
+                                    color = SecondaryGray.copy(alpha = 0.75f),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    lineHeight = 13.sp
+                                )
+                            }
+
                             // User visual hint for pinch gesture
                             Text(
                                 text = "💡 Tip: Pinch graph to zoom & view detailed hour information",

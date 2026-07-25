@@ -60,7 +60,10 @@ class AttentionMonitoringService : Service() {
                     if (!useSimulatedData) {
                         querySystemMetrics()
                     }
-                    Thread.sleep(15000) // check every 15s
+                    if (isTestModeEnabled) {
+                        checkTestModeInstantTrigger(this)
+                    }
+                    Thread.sleep(5000) // check every 5s
                 } catch (e: InterruptedException) {
                     break
                 }
@@ -111,11 +114,34 @@ class AttentionMonitoringService : Service() {
 
         // Active State
         var useSimulatedData = false
+        var isTestModeEnabled = false
+        var isPreventionPlanActive = false
+        var isMicroBreaksEnabled = true
+        var isNighttimeLockoutEnabled = true
         var apiScore = 0.52f
         var riskTier = "moderate"
         private var lastAlertTime = 0L
+        private var lastTestTriggerTime = 0L
         private var lastAlertRisk: String? = null
         private var lastCalculationDay = -1
+
+        private fun checkTestModeInstantTrigger(context: Context) {
+            val currentPkg = AttentionAccessibilityService.activePackage ?: return
+            val canonicalPkg = getCanonicalPackageName(currentPkg)
+            val isShortFormApp = TARGET_PACKAGES.contains(currentPkg) || TARGET_PACKAGES.contains(canonicalPkg)
+
+            // ONLY trigger test nudge if user is CURRENTLY using Instagram, TikTok, or YouTube!
+            if (!isShortFormApp) return
+
+            val now = System.currentTimeMillis()
+            if (now - lastTestTriggerTime >= 5000L) {
+                lastTestTriggerTime = now
+                lastAlertTime = now
+                lastAlertRisk = "moderate"
+                onTriggerAlert?.invoke("moderate", 0.55f)
+                showRiskAlertNotification(context, "moderate", 0.55f)
+            }
+        }
 
         private fun checkAndResetAtMidnight() {
             val currentDay = ZonedDateTime.now(ZoneId.systemDefault()).dayOfYear
@@ -420,8 +446,7 @@ class AttentionMonitoringService : Service() {
             val nNight = Math.min(1.0f, Math.max(0.0f, safeNight))
 
             // Formula: API = (0.30 * N(session)) + (0.20 * N(scroll)) + (0.30 * N(switch)) + (0.20 * N(night))
-            val rawScore = (0.30f * nSession) + (0.20f * nScroll) + (0.30f * nSwitch) + (0.20f * nNight)
-            val roundedScore = Math.round(rawScore * 100f) / 100f
+            val roundedScore = computeApiScore(nSession, nScroll, nSwitch, nNight)
             apiScore = if (roundedScore.isNaN() || roundedScore.isInfinite()) 0f else roundedScore
 
             val prevRisk = riskTier
@@ -512,12 +537,21 @@ class AttentionMonitoringService : Service() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             
-            val title = if (riskLevel == "high") "High Attention Fatigue" else "Attention Drift Detected"
-            val body = if (riskLevel == "high") {
-                "Compulsive scrolling detected. Tap to launch your Prevention Plan."
-            } else {
-                "You've been in a continuous short-form video session. Take a 5-minute break."
+            val currentHour = ZonedDateTime.now(ZoneId.systemDefault()).hour
+            val isNightTime = currentHour in 0..5
+
+            val title = when {
+                riskLevel == "high" -> "High Attention Fatigue"
+                isNightTime -> "Late-Night Scrolling Detected"
+                else -> "20-Min Micro-Break Reminder"
             }
+            val body = when {
+                riskLevel == "high" -> "Compulsive scrolling detected. Tap to launch your Prevention Plan."
+                isNightTime -> "Late-night usage detected. Take a break to protect your sleep."
+                else -> "You've been scrolling for 20 minutes. Tap to take a 5-minute break."
+            }
+
+            val actionTitle = if (riskLevel == "high") "Launch Prevention Plan" else "Take 5-Min Break"
             
             val notification = NotificationCompat.Builder(context, alertChannelId)
                 .setContentTitle(title)
@@ -526,9 +560,30 @@ class AttentionMonitoringService : Service() {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
+                .addAction(
+                    android.R.drawable.ic_media_play,
+                    actionTitle,
+                    pendingIntent
+                )
                 .build()
                 
             manager.notify(riskLevel.hashCode(), notification)
+        }
+
+        /**
+         * Canonical API Score formula — single source of truth.
+         * Section 4.4: w1=w3=0.30 (largest effect size: session & switch).
+         * All call-sites (updateCalculations, queryHourlyBuckets, AttentionCalculationWorker) MUST
+         * use this function to prevent weight divergence.
+         *
+         * @param nSession  Normalised session hours  in [0, 1]
+         * @param nScroll   Normalised scroll velocity in [0, 1]
+         * @param nSwitch   Normalised switch frequency in [0, 1]
+         * @param nNight    Normalised night-time ratio in [0, 1]
+         */
+        fun computeApiScore(nSession: Float, nScroll: Float, nSwitch: Float, nNight: Float): Float {
+            val raw = (0.30f * nSession) + (0.20f * nScroll) + (0.30f * nSwitch) + (0.20f * nNight)
+            return (Math.round(raw * 100f) / 100f).toFloat()
         }
 
         data class HourlyBucketData(
@@ -597,15 +652,21 @@ class AttentionMonitoringService : Service() {
                 val score = if (hourlyMs == 0L) {
                     0.0f
                 } else {
+                    // nSession: normalised to a 1-hour ceiling (≥1 hr in a single hour → score 1.0)
                     val hourlySessionHrs = hourlyMs.toFloat() / 3600000f
                     val nSession = Math.min(1.0f, Math.max(0.0f, hourlySessionHrs / 1.0f))
-                    val nScroll = Math.min(1.0f, Math.max(0.0f, currentScroll / 250.0f))
-                    val nSwitch = Math.min(1.0f, Math.max(0.0f, currentSwitches / 20.0f))
+
+                    // nScroll / nSwitch: per-hour historical data is NOT stored by the Accessibility
+                    // Service — only live global values exist. Injecting those live globals into past
+                    // hour buckets would make the entire chart fluctuate every second with the user's
+                    // current activity, which is misleading. We honestly omit these two components
+                    // for historical hours; they contribute only to the current-hour live reading.
+                    val nScroll = if (h == currentHour) Math.min(1.0f, Math.max(0.0f, currentScroll / 250.0f)) else 0.0f
+                    val nSwitch = if (h == currentHour) Math.min(1.0f, Math.max(0.0f, currentSwitches / 20.0f)) else 0.0f
                     val nNight = if (h in 0..5) 1.0f else 0.0f
 
-                    val raw = (0.40f * nSession) + (0.20f * nScroll) + (0.20f * nSwitch) + (0.20f * nNight)
-                    val rounded = Math.round(raw * 100f) / 100f
-                    Math.min(1.0f, Math.max(0.05f, rounded))
+                    // Use the canonical formula — same weights as updateCalculations() & AttentionCalculationWorker
+                    Math.min(1.0f, computeApiScore(nSession, nScroll, nSwitch, nNight))
                 }
 
                 buckets.add(HourlyBucketData(h, label, startTimeMs, endTimeMs, hourlyMs, score))

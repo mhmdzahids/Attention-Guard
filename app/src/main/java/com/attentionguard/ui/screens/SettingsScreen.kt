@@ -26,6 +26,8 @@ import com.attentionguard.ui.theme.*
 fun SettingsScreen(
     useSimulatedData: Boolean,
     onSimulatedDataToggled: (Boolean) -> Unit,
+    isTestModeEnabled: Boolean = false,
+    onTestModeToggled: (Boolean) -> Unit = {},
     sessionDuration: Float,
     onSessionChanged: (Float) -> Unit,
     launchFrequency: Int,
@@ -241,6 +243,18 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = Color.White),
                 modifier = Modifier.fillMaxWidth()
             ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    ToggleRow(
+                        title = "Instant Test Nudge Mode",
+                        subtitle = "Memicu notifikasi dan pop-up intervensi secara instan (setiap 5 detik) saat membuka YouTube, Instagram, atau TikTok untuk menguji Micro-Breaks tanpa menunggu 20 menit.",
+                        checked = isTestModeEnabled,
+                        onCheckedChange = onTestModeToggled
+                    )
+                    Divider(color = HairlineSoft, thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                }
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),

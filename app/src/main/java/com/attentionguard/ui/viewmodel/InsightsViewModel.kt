@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.attentionguard.data.AttentionLog
-import com.attentionguard.service.AttentionMonitoringService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -74,7 +73,11 @@ class InsightsViewModel : ViewModel() {
             }
 
             // Real UsageStats mode
-            val bucketsFromService = AttentionMonitoringService.queryHourlyBuckets(context)
+            // NOTE: queryHourlyBuckets() / bucketsFromService removed — it called UsageStatsManager
+            // for all 24 hours on every refresh without caching, yet serviceBucket was never read
+            // in the score or durationMs formula below. apiScore and durationMs are derived solely
+            // from Room DB logs (hourLogs). Removing the call eliminates the live OS query that was
+            // identified as the root cause of historical chart fluctuation.
             val todayLogs = dbLogs.filter { it.timestamp >= startOfDayMs }
 
             val points = (0..23).map { h ->
@@ -91,7 +94,6 @@ class InsightsViewModel : ViewModel() {
                 }
                 val label = String.format("%02d:00 %s", displayHour, amPm)
 
-                val serviceBucket = bucketsFromService.find { it.hour == h }
                 val hourLogs = todayLogs.filter { it.timestamp in sTime..eTime }
 
                 // STRICT DB-LOG & ZERO-FILL CHECK:

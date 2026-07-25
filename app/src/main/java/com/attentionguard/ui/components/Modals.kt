@@ -57,6 +57,12 @@ fun NudgeModal(
         }
     }
 
+    val currentHour = remember { java.time.ZonedDateTime.now(java.time.ZoneId.systemDefault()).hour }
+    val isNightTime = currentHour in 0..5
+
+    val modalTitle = if (isNightTime) "Late-Night Scrolling Detected" else "20-Min Micro-Break Triggered"
+    val modalBody = if (isNightTime) lateNightText else "You've been continuously scrolling short-form video feeds for over 20 minutes. Taking a 5-minute break will reset your cognitive load."
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(24.dp), // rounded-xxl (24.dp)
@@ -95,7 +101,7 @@ fun NudgeModal(
                 )
 
                 Text(
-                    text = "Late-Night Scrolling Detected",
+                    text = modalTitle,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = OnSurfaceDark,
@@ -103,7 +109,7 @@ fun NudgeModal(
                 )
 
                 Text(
-                    text = lateNightText,
+                    text = modalBody,
                     fontSize = 13.sp,
                     color = OnSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -162,7 +168,7 @@ fun NudgeModal(
 fun PreventionPlanOverlayModal(
     apiScore: Float,
     onDismiss: () -> Unit,
-    onActivate: () -> Unit
+    onActivate: (isMicroBreaksEnabled: Boolean, isNighttimeLockoutEnabled: Boolean) -> Unit
 ) {
     var check1 by remember { mutableStateOf(false) }
     var check2 by remember { mutableStateOf(false) }
@@ -287,7 +293,11 @@ fun PreventionPlanOverlayModal(
                         modifier = Modifier.fillMaxWidth().padding(bottom = 48.dp)
                     ) {
                         Button(
-                            onClick = onActivate,
+                            onClick = {
+                                val microBreaks = check1 || check4
+                                val nightLock = check2 || check4
+                                onActivate(microBreaks, nightLock)
+                            },
                             colors = ButtonDefaults.buttonColors(containerColor = InkButton),
                             shape = RoundedCornerShape(100.dp),
                             modifier = Modifier

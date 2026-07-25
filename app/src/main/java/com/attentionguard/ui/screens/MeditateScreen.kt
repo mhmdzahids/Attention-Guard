@@ -40,13 +40,62 @@ fun MeditateScreen(
     apiScore: Float,
     riskTier: String,
     isPlanActive: Boolean,
+    isMicroBreaksEnabled: Boolean,
+    isNighttimeLockoutEnabled: Boolean,
     onActivatePlan: () -> Unit,
     onModifyPlan: () -> Unit,
     onViewDashboard: () -> Unit
 ) {
+    var showModifyDialog by remember { mutableStateOf(false) }
+
+    // Modify Plan Confirmation Dialog
+    if (showModifyDialog) {
+        AlertDialog(
+            onDismissRequest = { showModifyDialog = false },
+            title = {
+                Text(
+                    text = "Modify Prevention Plan",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = OnSurfaceDark
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to modify your plan?",
+                    fontSize = 14.sp,
+                    color = OnSurfaceVariant
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showModifyDialog = false
+                        onModifyPlan()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CommerceCobalt),
+                    shape = RoundedCornerShape(100.dp)
+                ) {
+                    Text("Yes, Modify", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showModifyDialog = false }
+                ) {
+                    Text("Cancel", color = SecondaryGray, fontWeight = FontWeight.Medium)
+                }
+            },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(24.dp)
+        )
+    }
+
     if (isPlanActive) {
         ActivePlanContent(
-            onModifyPlan = onModifyPlan,
+            isMicroBreaksEnabled = isMicroBreaksEnabled,
+            isNighttimeLockoutEnabled = isNighttimeLockoutEnabled,
+            onModifyPlanClick = { showModifyDialog = true },
             onViewDashboard = onViewDashboard
         )
     } else {
@@ -60,7 +109,9 @@ fun MeditateScreen(
 
 @Composable
 private fun ActivePlanContent(
-    onModifyPlan: () -> Unit,
+    isMicroBreaksEnabled: Boolean,
+    isNighttimeLockoutEnabled: Boolean,
+    onModifyPlanClick: () -> Unit,
     onViewDashboard: () -> Unit
 ) {
     val scrollState = rememberScrollState()
@@ -143,18 +194,19 @@ private fun ActivePlanContent(
                                 Icon(
                                     imageVector = Icons.Default.Timer,
                                     contentDescription = null,
-                                    tint = CommerceCobalt,
+                                    tint = if (isMicroBreaksEnabled) CommerceCobalt else SecondaryGray,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
-                            // Pulsing dot at top right
-                            Box(
-                                modifier = Modifier
-                                    .size(12.dp)
-                                    .background(Color(0xFF31A24C), RoundedCornerShape(100.dp))
-                                    .border(2.dp, Color.White, RoundedCornerShape(100.dp))
-                                    .align(Alignment.TopEnd)
-                            )
+                            if (isMicroBreaksEnabled) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .background(Color(0xFF31A24C), RoundedCornerShape(100.dp))
+                                        .border(2.dp, Color.White, RoundedCornerShape(100.dp))
+                                        .align(Alignment.TopEnd)
+                                )
+                            }
                         }
                         Column(modifier = Modifier.weight(1f)) {
                             Row(
@@ -162,18 +214,18 @@ private fun ActivePlanContent(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(
-                                    text = "Micro-Breaks Enabled",
+                                    text = "Enable Micro-Breaks",
                                     fontWeight = FontWeight.Bold,
                                     color = OnSurfaceDark,
                                     fontSize = 15.sp
                                 )
                                 Surface(
                                     shape = RoundedCornerShape(100.dp),
-                                    color = Color(0xFFE6F4EA)
+                                    color = if (isMicroBreaksEnabled) Color(0xFFE6F4EA) else SurfaceSoft
                                 ) {
                                     Text(
-                                        text = "Active",
-                                        color = Color(0xFF1E7E34),
+                                        text = if (isMicroBreaksEnabled) "Active" else "Not Active",
+                                        color = if (isMicroBreaksEnabled) Color(0xFF1E7E34) else SecondaryGray,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -181,7 +233,7 @@ private fun ActivePlanContent(
                                 }
                             }
                             Text(
-                                text = "Next nudge in 12 minutes",
+                                text = if (isMicroBreaksEnabled) "Next nudge in 12 minutes" else "Disabled in current plan",
                                 color = OnSurfaceVariant,
                                 fontSize = 13.sp
                             )
@@ -210,7 +262,7 @@ private fun ActivePlanContent(
                             Icon(
                                 imageVector = Icons.Default.Bedtime,
                                 contentDescription = null,
-                                tint = SecondaryGray,
+                                tint = if (isNighttimeLockoutEnabled) CommerceCobalt else SecondaryGray,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -227,11 +279,11 @@ private fun ActivePlanContent(
                                 )
                                 Surface(
                                     shape = RoundedCornerShape(100.dp),
-                                    color = SurfaceSoft
+                                    color = if (isNighttimeLockoutEnabled) Color(0xFFE6F4EA) else SurfaceSoft
                                 ) {
                                     Text(
-                                        text = "Scheduled",
-                                        color = OnSurfaceVariant,
+                                        text = if (isNighttimeLockoutEnabled) "Active" else "Not Active",
+                                        color = if (isNighttimeLockoutEnabled) Color(0xFF1E7E34) else SecondaryGray,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
@@ -239,7 +291,7 @@ private fun ActivePlanContent(
                                 }
                             }
                             Text(
-                                text = "Activates at 11:00 PM",
+                                text = if (isNighttimeLockoutEnabled) "Activates post-midnight (11:00 PM)" else "Disabled in current plan",
                                 color = OnSurfaceVariant,
                                 fontSize = 13.sp
                             )
@@ -329,7 +381,6 @@ private fun ActivePlanContent(
                             fontSize = 15.sp
                         )
 
-                        // Custom Curved Path in Canvas
                         Canvas(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -377,7 +428,7 @@ private fun ActivePlanContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 OutlinedButton(
-                    onClick = onModifyPlan,
+                    onClick = onModifyPlanClick,
                     border = BorderStroke(2.dp, CommerceCobalt),
                     shape = RoundedCornerShape(100.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = CommerceCobalt),
@@ -501,21 +552,21 @@ private fun InactivePlanContent(
                 )
             }
 
-            // Recommendations Bento List
+            // Recommendations Bento List (Reverted Clean Static Cards)
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                PlanCard(
+                PlanCardStatic(
                     title = "Enable Micro-Breaks",
                     description = "Automatically trigger gentle reminders every 20 minutes of scrolling.",
                     icon = Icons.Default.Timer
                 )
-                PlanCard(
+                PlanCardStatic(
                     title = "Nighttime Lockout",
-                    description = "Recommendations to restrict app launches post-midnight to protect sleep hygiene.",
+                    description = "Restrict app launches post-midnight to protect sleep hygiene.",
                     icon = Icons.Default.Bedtime
                 )
-                PlanCard(
+                PlanCardStatic(
                     title = "Focus Mini-Games",
-                    description = "Sharpen your mind with quick cognitive games once your scrolling timer expires to help regain concentration.",
+                    description = "Sharpen your mind with quick cognitive games once your scrolling timer expires.",
                     icon = Icons.Default.Extension
                 )
             }
@@ -570,7 +621,7 @@ private fun InactivePlanContent(
                 }
             }
 
-            // Cobalt Blue CTA Button (strictly reserved for critical action)
+            // Cobalt Blue CTA Button
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -604,7 +655,7 @@ private fun InactivePlanContent(
 }
 
 @Composable
-private fun PlanCard(title: String, description: String, icon: ImageVector) {
+private fun PlanCardStatic(title: String, description: String, icon: ImageVector) {
     Card(
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, HairlineSoft),
