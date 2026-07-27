@@ -164,6 +164,7 @@ fun MainAppScaffold() {
     var isMicroBreaksEnabled by remember { mutableStateOf(AttentionMonitoringService.isMicroBreaksEnabled) }
     var isNighttimeLockoutEnabled by remember { mutableStateOf(AttentionMonitoringService.isNighttimeLockoutEnabled) }
     var isTestModeEnabled by remember { mutableStateOf(AttentionMonitoringService.isTestModeEnabled) }
+    var isAdvancedMetricsEnabled by remember { mutableStateOf(AttentionMonitoringService.isAdvancedMetricsEnabled) }
 
     // Calculated state
     var apiScore by remember { mutableStateOf(0.52f) }
@@ -571,7 +572,8 @@ fun MainAppScaffold() {
                             sessionDuration = sessionDuration,
                             scrollVelocity = scrollVelocity,
                             switchFreq = switchFreq,
-                            nightRatio = nightRatio
+                            nightRatio = nightRatio,
+                            isAdvancedMetricsEnabled = isAdvancedMetricsEnabled
                         )
                         1 -> InsightsScreen(
                             apiScore = apiScore,
@@ -589,6 +591,7 @@ fun MainAppScaffold() {
                             isTiktokInstalled = isTiktokInstalled,
                             dbLogs = dbLogs,
                             useSimulatedData = useSimulatedData,
+                            isAdvancedMetricsEnabled = isAdvancedMetricsEnabled,
                             onNavigateToMeditate = {
                                 coroutineScope.launch {
                                     val targetIndex = tabs.indexOfFirst { it.id == "meditate" }
@@ -659,6 +662,11 @@ fun MainAppScaffold() {
                         onTestModeToggled = { enabled ->
                             isTestModeEnabled = enabled
                             AttentionMonitoringService.isTestModeEnabled = enabled
+                        },
+                        isAdvancedMetricsEnabled = isAdvancedMetricsEnabled,
+                        onAdvancedMetricsToggled = { enabled ->
+                            isAdvancedMetricsEnabled = enabled
+                            AttentionMonitoringService.isAdvancedMetricsEnabled = enabled
                         },
                         sessionDuration = sessionDuration,
                         onSessionChanged = { sessionDuration = it; onSignalChanged() },

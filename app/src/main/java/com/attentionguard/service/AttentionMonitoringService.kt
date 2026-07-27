@@ -115,6 +115,7 @@ class AttentionMonitoringService : Service() {
         // Active State
         var useSimulatedData = false
         var isTestModeEnabled = false
+        var isAdvancedMetricsEnabled = false
         var isPreventionPlanActive = false
         var isMicroBreaksEnabled = true
         var isNighttimeLockoutEnabled = true

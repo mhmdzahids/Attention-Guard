@@ -36,7 +36,8 @@ fun DashboardScreen(
     sessionDuration: Float,
     scrollVelocity: Float,
     switchFreq: Float,
-    nightRatio: Float
+    nightRatio: Float,
+    isAdvancedMetricsEnabled: Boolean = false
 ) {
     val scrollState = rememberScrollState()
 
@@ -127,13 +128,13 @@ fun DashboardScreen(
  
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = String.format("%.2f", animatedScore),
+                            text = if (isAdvancedMetricsEnabled) String.format("%.2f", animatedScore) else "${(animatedScore * 100).toInt()}%",
                             fontSize = 44.sp,
                             fontWeight = FontWeight.Bold,
                             color = OnSurfaceDark
                         )
                         Text(
-                            text = "API SCORE",
+                            text = if (isAdvancedMetricsEnabled) "API SCORE" else "ATTENTION LOAD",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = SecondaryGray,
@@ -172,7 +173,11 @@ fun DashboardScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "Attention Performance Indicator reflects your digital cognitive load today.",
+                    text = if (isAdvancedMetricsEnabled) {
+                        "Attention Performance Indicator reflects your digital cognitive load today."
+                    } else {
+                        "Attention Load reflects your digital cognitive strain and app usage intensity today."
+                    },
                     textAlign = TextAlign.Center,
                     color = OnSurfaceVariant,
                     fontSize = 14.sp,
@@ -191,14 +196,14 @@ fun DashboardScreen(
                 modifier = Modifier.weight(1f),
                 title = "Session Duration",
                 value = String.format("%.1f hrs", sessionDuration),
-                subtitle = "UsageStats API",
+                subtitle = if (isAdvancedMetricsEnabled) "UsageStats API" else "Active Exposure",
                 icon = Icons.Default.Timer
             )
             MetricCard(
                 modifier = Modifier.weight(1f),
                 title = "Scroll Speed",
                 value = if (scrollVelocity > 160f) "Fast" else if (scrollVelocity < 80f) "Slow" else "Normal",
-                subtitle = "Accessibility API",
+                subtitle = if (isAdvancedMetricsEnabled) "Accessibility API" else String.format("%.0f px/s", scrollVelocity),
                 icon = Icons.Default.Speed
             )
         }
@@ -210,15 +215,15 @@ fun DashboardScreen(
             MetricCard(
                 modifier = Modifier.weight(1f),
                 title = "Task Switches",
-                value = String.format("%d/hr", switchFreq.toInt()),
-                subtitle = "ActivityManager API",
+                value = String.format("%dx / hr", Math.round(switchFreq)),
+                subtitle = if (isAdvancedMetricsEnabled) "ActivityManager API" else "Switch Rate",
                 icon = Icons.Default.AltRoute
             )
             MetricCard(
                 modifier = Modifier.weight(1f),
                 title = "Night-time Use",
                 value = String.format("%d%%", (nightRatio * 100).toInt()),
-                subtitle = "Midnight Ratio",
+                subtitle = if (isAdvancedMetricsEnabled) "Midnight Ratio" else "Late-Night Share",
                 icon = Icons.Default.DarkMode
             )
         }

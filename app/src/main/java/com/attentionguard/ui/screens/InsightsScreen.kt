@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Brightness3
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,6 +40,7 @@ import androidx.compose.ui.layout.ContentScale
 data class ChartPoint(val label: String, val value: Float)
 // TimestampedPoint removed — was dead code from a previous architecture (never instantiated).
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InsightsScreen(
     apiScore: Float,
@@ -56,12 +58,14 @@ fun InsightsScreen(
     isTiktokInstalled: Boolean,
     dbLogs: List<com.attentionguard.data.AttentionLog>,
     useSimulatedData: Boolean,
+    isAdvancedMetricsEnabled: Boolean = false,
     onNavigateToMeditate: () -> Unit,
     onScrollEnabledChanged: (Boolean) -> Unit
 ) {
     val scrollState = rememberScrollState()
     
     var liveTimeMs by remember { mutableStateOf(System.currentTimeMillis()) }
+    var showChartInfoModal by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         while (true) {
             liveTimeMs = System.currentTimeMillis()
@@ -304,13 +308,24 @@ fun InsightsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text(
-                                text = if (currentRenderType == "hourly") "PEAK ACTIVITY" else "MOST ACTIVE DAY",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = SecondaryGray,
-                                letterSpacing = 1.sp
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = if (currentRenderType == "hourly") "PEAK ACTIVITY" else "MOST ACTIVE DAY",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = SecondaryGray,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = "Chart Info",
+                                    tint = SecondaryGray,
+                                    modifier = Modifier
+                                        .size(16.dp)
+                                        .clickable { showChartInfoModal = true }
+                                )
+                            }
                             Text(
                                 text = if (currentRenderType == "hourly") peakHourText else peakDayText,
                                 fontSize = 24.sp,
@@ -674,7 +689,7 @@ fun InsightsScreen(
                             }
                             
                             // Hourly score disclaimer — explains data source and accuracy
-                            if (currentRenderType == "hourly" && !useSimulatedData) {
+                            if (currentRenderType == "hourly" && !useSimulatedData && isAdvancedMetricsEnabled) {
                                 Text(
                                     text = "ℹ️ Skor per-jam diambil dari rata-rata log yang tersimpan di database pada jam tersebut. " +
                                            "Setiap log mencakup sesi, scroll, switch, & rasio malam saat log ditulis — data historis tidak berubah setelah waktunya berlalu.",
@@ -1131,6 +1146,57 @@ fun InsightsScreen(
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )
+                }
+            }
+        }
+
+        if (showChartInfoModal) {
+            ModalBottomSheet(
+                onDismissRequest = { showChartInfoModal = false },
+                containerColor = Color.White,
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Chart Info",
+                            tint = CommerceCobalt,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Text(
+                            text = "Understanding Activity Charts",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp,
+                            color = OnSurfaceDark
+                        )
+                    }
+                    Text(
+                        text = "• Hourly Activity measures your active short-form app usage (TikTok, Instagram, YouTube) and task switching frequency for each specific 1-hour window.\n\n" +
+                               "• High points indicate periods of heavy cognitive load or intense doomscrolling.\n\n" +
+                               "• Zero points indicate hours with no targeted app usage.\n\n" +
+                               "• Data is privacy-preserved and processed entirely on your device.",
+                        color = OnSurfaceVariant,
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp
+                    )
+                    Button(
+                        onClick = { showChartInfoModal = false },
+                        colors = ButtonDefaults.buttonColors(containerColor = CommerceCobalt),
+                        shape = RoundedCornerShape(100.dp),
+                        modifier = Modifier.fillMaxWidth().height(44.dp)
+                    ) {
+                        Text("Got It", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }

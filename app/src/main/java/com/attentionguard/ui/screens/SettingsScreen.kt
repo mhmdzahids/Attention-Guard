@@ -28,6 +28,8 @@ fun SettingsScreen(
     onSimulatedDataToggled: (Boolean) -> Unit,
     isTestModeEnabled: Boolean = false,
     onTestModeToggled: (Boolean) -> Unit = {},
+    isAdvancedMetricsEnabled: Boolean = false,
+    onAdvancedMetricsToggled: (Boolean) -> Unit = {},
     sessionDuration: Float,
     onSessionChanged: (Float) -> Unit,
     launchFrequency: Int,
@@ -252,6 +254,13 @@ fun SettingsScreen(
                         subtitle = "Memicu notifikasi dan pop-up intervensi secara instan (setiap 5 detik) saat membuka YouTube, Instagram, atau TikTok untuk menguji Micro-Breaks tanpa menunggu 20 menit.",
                         checked = isTestModeEnabled,
                         onCheckedChange = onTestModeToggled
+                    )
+                    Divider(color = HairlineSoft, thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
+                    ToggleRow(
+                        title = "Advanced Technical Metrics",
+                        subtitle = "Tampilkan label API internal (UsageStats, Accessibility), nilai desimal API score, dan rincian log database untuk kebutuhan analisis teknis/developer.",
+                        checked = isAdvancedMetricsEnabled,
+                        onCheckedChange = onAdvancedMetricsToggled
                     )
                     Divider(color = HairlineSoft, thickness = 1.dp, modifier = Modifier.padding(horizontal = 16.dp))
                 }
