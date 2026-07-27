@@ -248,6 +248,11 @@ class AttentionMonitoringService : Service() {
             val skip: Float
         )
 
+        data class HourlyMetricResults(
+            val sessionMs: Long,
+            val switchCount: Int
+        )
+
         val TARGET_PACKAGES = setOf(
             "com.google.android.youtube",
             "com.instagram.android",
@@ -415,6 +420,59 @@ class AttentionMonitoringService : Service() {
                 instagram = instagramHours,
                 tiktok = tiktokHours,
                 skip = AttentionAccessibilityService.getSkipRate()
+            )
+        }
+
+        fun queryHourlyMetricsDirectly(context: Context, startTime: Long, endTime: Long): HourlyMetricResults {
+            checkInstallationStatus(context)
+            val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as? UsageStatsManager
+                ?: return HourlyMetricResults(0L, 0)
+
+            val maxPossibleMs = Math.max(0L, endTime - startTime)
+            var totalHourlyMs = 0L
+
+            try {
+                val hourlyStats = usageStatsManager.queryAndAggregateUsageStats(startTime, endTime)
+                for ((pkg, stat) in hourlyStats) {
+                    val canonicalPkg = getCanonicalPackageName(pkg)
+                    val timeInFg = Math.min(stat.totalTimeInForeground, maxPossibleMs)
+                    if (timeInFg > 0L && (TARGET_PACKAGES.contains(pkg) || TARGET_PACKAGES.contains(canonicalPkg))) {
+                        totalHourlyMs += timeInFg
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying hourly UsageStats", e)
+            }
+
+            var switchCount = 0
+            try {
+                val events = usageStatsManager.queryEvents(startTime, endTime)
+                val event = UsageEvents.Event()
+                var lastPackage: String? = null
+
+                while (events.hasNextEvent()) {
+                    events.getNextEvent(event)
+                    val pkg = event.packageName ?: continue
+                    val time = event.timeStamp
+                    if (time !in startTime..endTime) continue
+                    val canonicalPkg = getCanonicalPackageName(pkg)
+
+                    if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+                        if (TARGET_PACKAGES.contains(pkg) || TARGET_PACKAGES.contains(canonicalPkg)) {
+                            if (canonicalPkg != lastPackage && lastPackage != null) {
+                                switchCount++
+                            }
+                            lastPackage = canonicalPkg
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error querying hourly UsageEvents", e)
+            }
+
+            return HourlyMetricResults(
+                sessionMs = Math.min(totalHourlyMs, maxPossibleMs),
+                switchCount = switchCount
             )
         }
 

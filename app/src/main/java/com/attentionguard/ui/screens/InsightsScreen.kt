@@ -113,13 +113,9 @@ fun InsightsScreen(
         todayLogs.maxByOrNull { it.timestamp }
     }
 
-    val activeSessionDuration = remember(todayLogs, sessionDuration, useSimulatedData) {
+    val activeSessionDuration = remember(todayLogs, latestLog, sessionDuration, useSimulatedData) {
         if (!useSimulatedData) {
-            if (todayLogs.isNotEmpty()) {
-                todayLogs.map { it.sessionDuration }.average().toFloat()
-            } else {
-                0f
-            }
+            latestLog?.sessionDuration ?: 0f
         } else {
             sessionDuration
         }
@@ -142,25 +138,17 @@ fun InsightsScreen(
         }
     }
 
-    val activeSwitchFreq = remember(todayLogs, switchFreq, useSimulatedData) {
+    val activeSwitchFreq = remember(todayLogs, latestLog, switchFreq, useSimulatedData) {
         if (!useSimulatedData) {
-            if (todayLogs.isNotEmpty()) {
-                todayLogs.map { it.taskSwitches }.average().toFloat()
-            } else {
-                0f
-            }
+            latestLog?.taskSwitches ?: 0f
         } else {
             switchFreq
         }
     }
 
-    val activeNightRatio = remember(todayLogs, nightRatio, useSimulatedData) {
+    val activeNightRatio = remember(todayLogs, latestLog, nightRatio, useSimulatedData) {
         if (!useSimulatedData) {
-            if (todayLogs.isNotEmpty()) {
-                todayLogs.map { it.nightRatio }.average().toFloat()
-            } else {
-                0f
-            }
+            latestLog?.nightRatio ?: 0f
         } else {
             nightRatio
         }

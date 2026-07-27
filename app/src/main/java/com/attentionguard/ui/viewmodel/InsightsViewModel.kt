@@ -94,30 +94,59 @@ class InsightsViewModel : ViewModel() {
                 }
                 val label = String.format("%02d:00 %s", displayHour, amPm)
 
-                val hourLogs = todayLogs.filter { it.timestamp in sTime..eTime }
-
-                // STRICT DB-LOG & ZERO-FILL CHECK:
-                // An hour bucket receives a non-zero API score ONLY if Room DB contains recorded logs for that specific hour interval.
-                val apiScore = when {
-                    h > currentHour -> 0.0f
-                    hourLogs.isNotEmpty() -> hourLogs.map { it.apiScore }.average().toFloat().coerceIn(0.0f, 1.0f)
-                    else -> 0.0f // STRICT 0.0f FOR MISSING / EMPTY BUCKETS (No fallback baselines or service defaults)
-                }
-
-                val durationMs = if (hourLogs.isNotEmpty()) {
-                    (hourLogs.map { it.sessionDuration }.average() * 3600000L).toLong()
+                if (h > currentHour) {
+                    DiscreteHourlyPoint(
+                        hourOfDay = h,
+                        label = label,
+                        startTimeMs = sTime,
+                        endTimeMs = eTime,
+                        durationMs = 0L,
+                        apiScore = 0.0f
+                    )
                 } else {
-                    0L
-                }
+                    val queryEnd = Math.min(eTime, System.currentTimeMillis())
+                    val hourlyMetrics = com.attentionguard.service.AttentionMonitoringService.queryHourlyMetricsDirectly(context, sTime, queryEnd)
+                    val hourlySessionMs = hourlyMetrics.sessionMs
+                    val hourlySwitches = hourlyMetrics.switchCount
 
-                DiscreteHourlyPoint(
-                    hourOfDay = h,
-                    label = label,
-                    startTimeMs = sTime,
-                    endTimeMs = eTime,
-                    durationMs = durationMs,
-                    apiScore = apiScore
-                )
+                    val hourLogs = todayLogs.filter { it.timestamp in sTime..eTime }
+
+                    // Hour-scoped Normalizations
+                    // nSession is normalized against 1 hour (3,600,000 ms) - max possible usage in 1 hour
+                    val nSession = (hourlySessionMs.toFloat() / 3600000f).coerceIn(0f, 1f)
+                    val nSwitch = (hourlySwitches.toFloat() / 20.0f).coerceIn(0f, 1f)
+
+                    // nScroll: average scroll velocity from DB logs in that hour if present
+                    val validScrollLogs = hourLogs.filter { it.scrollVelocity in 1f..1000f }
+                    val nScroll = if (validScrollLogs.isNotEmpty()) {
+                        (validScrollLogs.map { it.scrollVelocity }.average().toFloat() / 250.0f).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
+
+                    // nNight: night ratio for 0..5 AM window if session active
+                    val nNight = if (h in 0..5 && hourlySessionMs > 0L) {
+                        nSession
+                    } else {
+                        0f
+                    }
+
+                    // Hour-scoped API Score calculation
+                    val apiScore = if (hourlySessionMs == 0L && hourLogs.isEmpty()) {
+                        0.0f
+                    } else {
+                        (0.30f * nSession + 0.20f * nScroll + 0.30f * nSwitch + 0.20f * nNight).coerceIn(0.0f, 1.0f)
+                    }
+
+                    DiscreteHourlyPoint(
+                        hourOfDay = h,
+                        label = label,
+                        startTimeMs = sTime,
+                        endTimeMs = eTime,
+                        durationMs = hourlySessionMs,
+                        apiScore = apiScore
+                    )
+                }
             }
 
             // FIX PEAK ACTIVITY LOGIC: Identify local hour bucket with highest active duration / score FOR TODAY ONLY.
